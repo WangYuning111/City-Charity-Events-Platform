@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# SQLite database files (MySQL is the production database)
+*.db
+*.db-shm
+*.db-wal
+
+# Project requirements and reports (not for upload)
+PROG2002 A2 Assessment Brief.pdf
+PROG2002 A2 Report.docx
+项目要求与报告模板.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

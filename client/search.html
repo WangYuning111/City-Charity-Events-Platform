@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Charity Events — City Charity Events Platform</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ===== Navbar ===== -->
+<nav class="navbar">
+    <div class="nav-brand">
+        <span class="brand-icon">❤️</span>
+        <span class="brand-text">CityCharity</span>
+    </div>
+    <div class="nav-toggle" id="navToggle" onclick="toggleMenu()">
+        <span></span><span></span><span></span>
+    </div>
+    <div class="nav-links" id="navLinks">
+        <a href="index.html">Home</a>
+        <a href="search.html" class="active">Search Events</a>
+        <a href="index.html#about">About Us</a>
+        <a href="index.html#events">All Events</a>
+    </div>
+</nav>
+
+<!-- ===== Breadcrumb ===== -->
+<div class="container">
+    <div class="breadcrumb">
+        <a href="index.html">Home</a>
+        <span>›</span>
+        <span>Search Events</span>
+    </div>
+</div>
+
+<!-- ===== Page Title ===== -->
+<div class="page-title">
+    <h1>Discover Charity Events</h1>
+    <p>Use the filters below to find charity events that match your interests</p>
+</div>
+
+<!-- ===== Search Form ===== -->
+<section class="search-section">
+    <div class="container">
+        <div class="search-container">
+            <!-- Error message area -->
+            <div class="error-message" id="searchError"></div>
+            
+            <form class="search-form" id="searchForm">
+                <!-- Date filter -->
+                <div class="form-group">
+                    <label for="filterDate">📅 Event Date</label>
+                    <input type="date" id="filterDate" name="date">
+                </div>
+                
+                <!-- Location filter -->
+                <div class="form-group">
+                    <label for="filterLocation">📍 Location</label>
+                    <input type="text" id="filterLocation" name="location" 
+                           placeholder="Enter city or venue name...">
+                </div>
+                
+                <!-- Category filter -->
+                <div class="form-group">
+                    <label for="filterCategory">🏷️ Category</label>
+                    <select id="filterCategory" name="category">
+                        <option value="">All Categories</option>
+                        <!-- Category options loaded dynamically by JavaScript -->
+                    </select>
+                </div>
+                
+                <!-- Action buttons -->
+                <div class="form-actions">
+                    <button type="submit" class="btn-search">🔍 Search Events</button>
+                    <button type="button" class="btn-clear" id="btnClear">✕ Clear Filters</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Search results area -->
+        <div class="search-results" id="searchResults">
+            <div class="search-results-header" id="resultsHeader" style="display: none;">
+                <h3>Search Results</h3>
+                <span class="results-count" id="resultsCount"></span>
+            </div>
+            
+            <!-- Loading spinner -->
+            <div class="loading" id="searchLoading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Searching events...</p>
+            </div>
+            
+            <!-- No results message -->
+            <div class="no-results" id="noResults" style="display: none;">
+                <span class="no-results-icon">🔍</span>
+                <p>No events matched your criteria.</p>
+                <p>Try adjusting the filters and search again.</p>
+            </div>
+            
+            <!-- Results grid -->
+            <div class="events-grid" id="eventsGrid"></div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Footer ===== -->
+<footer class="footer">
+    <div class="footer-grid">
+        <div class="footer-col">
+            <h3>CityCharity</h3>
+            <p>We are dedicated to bridging the gap for urban charitable causes, making it easy for every citizen to participate in charity events and contribute to building a warmer community.</p>
+        </div>
+        <div class="footer-col">
+            <h3>Quick Links</h3>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="search.html">Search Events</a></li>
+                <li><a href="index.html#about">About Us</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h3>Contact Us</h3>
+            <p>📧 13043716833@163.com</p>
+            <p>📞 13043716833</p>
+            <p>📍 Charity Tower, City CBD</p>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <p>&copy; 2026 City Charity Events Platform. All rights reserved. | PROG2002 Web Development II</p>
+    </div>
+</footer>
+
+<!-- Scroll to Top -->
+<button class="scroll-to-top" id="scrollToTop" title="Back to Top">⬆</button>
+
+<script src="js/search.js"></script>
+</body>
+</html>

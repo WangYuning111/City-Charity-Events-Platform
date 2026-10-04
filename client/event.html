@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Details — City Charity Events Platform</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ===== Navbar ===== -->
+<nav class="navbar">
+    <div class="nav-brand">
+        <span class="brand-icon">❤️</span>
+        <span class="brand-text">CityCharity</span>
+    </div>
+    <div class="nav-toggle" id="navToggle" onclick="toggleMenu()">
+        <span></span><span></span><span></span>
+    </div>
+    <div class="nav-links" id="navLinks">
+        <a href="index.html">Home</a>
+        <a href="search.html">Search Events</a>
+        <a href="index.html#about">About Us</a>
+        <a href="index.html#events">All Events</a>
+    </div>
+</nav>
+
+<!-- ===== Breadcrumb ===== -->
+<div class="container">
+    <div class="breadcrumb">
+        <a href="index.html">Home</a>
+        <span>›</span>
+        <a href="search.html">Search Events</a>
+        <span>›</span>
+        <span id="breadcrumbEventName">Event Details</span>
+    </div>
+</div>
+
+<!-- ===== Event Detail Section ===== -->
+<section class="detail-section">
+    <div class="container detail-container">
+        <!-- Loading spinner -->
+        <div class="loading" id="detailLoading">
+            <div class="spinner"></div>
+            <p>Loading event details...</p>
+        </div>
+
+        <!-- Error message -->
+        <div class="error-message" id="detailError"></div>
+
+        <!-- Detail content -->
+        <div id="detailContent" style="display: none;">
+            <!-- Event hero image -->
+            <div class="detail-hero">
+                <img id="detailImage" src="" alt="">
+                <div class="detail-hero-overlay">
+                    <span class="detail-badge" id="detailBadge"></span>
+                    <h1 id="detailTitle"></h1>
+                </div>
+            </div>
+
+            <!-- Event detail body -->
+            <div class="detail-content">
+                <div class="detail-grid">
+                    <!-- Left: Full description -->
+                    <div class="detail-main">
+                        <h2>Event Details</h2>
+                        <div class="description" id="detailDescription"></div>
+                    </div>
+
+                    <!-- Right: Info cards -->
+                    <div class="detail-sidebar">
+                        <!-- Event Information -->
+                        <div class="detail-info-card">
+                            <h3>Event Information</h3>
+                            <div class="info-item">
+                                <span class="info-icon">📅</span>
+                                <span id="infoDate"></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-icon">🕐</span>
+                                <span id="infoTime"></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-icon">📍</span>
+                                <span id="infoLocation"></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-icon">📍</span>
+                                <span id="infoAddress" style="color: #8D6E63; font-size: 0.85rem;"></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-icon">🏷️</span>
+                                <span id="infoCategory"></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-icon">🏢</span>
+                                <span id="infoOrg"></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-icon">🎫</span>
+                                <span id="infoPrice"></span>
+                            </div>
+                            <div class="info-item" id="infoParticipantsRow" style="display:none;">
+                                <span class="info-icon">👥</span>
+                                <span id="infoParticipants"></span>
+                            </div>
+                            <div class="info-item" id="infoContactRow" style="display:none;">
+                                <span class="info-icon">📞</span>
+                                <span id="infoContact"></span>
+                            </div>
+                        </div>
+
+                        <!-- Fundraising Progress -->
+                        <div class="detail-info-card detail-progress" id="progressCard">
+                            <h3>Fundraising Progress</h3>
+                            <div class="goal-numbers">
+                                <span>Raised<br><strong id="goalCurrent"></strong></span>
+                                <span>Goal<br><strong id="goalTarget"></strong></span>
+                            </div>
+                            <div class="progress-bar" style="height: 12px; border-radius: 6px;">
+                                <div class="progress-fill" id="goalProgressFill" style="height: 12px; border-radius: 6px;"></div>
+                            </div>
+                            <p style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-muted);" id="goalPercent"></p>
+                        </div>
+
+                        <!-- Organizer Information -->
+                        <div class="detail-info-card" id="orgInfoCard" style="display:none;">
+                            <h3>Organizer Information</h3>
+                            <p style="font-weight:600; margin-bottom:0.3rem;" id="orgName"></p>
+                            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.5rem;" id="orgMission"></p>
+                            <p style="font-size:0.85rem; color:var(--text-secondary);" id="orgDesc"></p>
+                        </div>
+
+                        <!-- Register Button -->
+                        <button class="btn-register" id="btnRegister" onclick="handleRegister()">
+                            ✨ Register Now
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Registration Modal ===== -->
+<div class="modal-overlay" id="registerModal">
+    <div class="modal-dialog">
+        <span class="modal-icon">🚧</span>
+        <h3>Under Construction</h3>
+        <p>This feature is currently under development. Full registration functionality will be available in a future version.</p>
+        <p style="font-size: 0.85rem; color: #8D6E63;">Thank you for your interest and support!</p>
+        <button class="btn-close-modal" onclick="closeModal()">Got It</button>
+    </div>
+</div>
+
+<!-- ===== Footer ===== -->
+<footer class="footer">
+    <div class="footer-grid">
+        <div class="footer-col">
+            <h3>CityCharity</h3>
+            <p>We are dedicated to bridging the gap for urban charitable causes, making it easy for every citizen to participate in charity events and contribute to building a warmer community.</p>
+        </div>
+        <div class="footer-col">
+            <h3>Quick Links</h3>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="search.html">Search Events</a></li>
+                <li><a href="index.html#about">About Us</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h3>Contact Us</h3>
+            <p>📧 13043716833@163.com</p>
+            <p>📞 13043716833</p>
+            <p>📍 Charity Tower, City CBD</p>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <p>&copy; 2026 City Charity Events Platform. All rights reserved. | PROG2002 Web Development II</p>
+    </div>
+</footer>
+
+<!-- Scroll to Top -->
+<button class="scroll-to-top" id="scrollToTop" title="Back to Top">⬆</button>
+
+<script src="js/event.js"></script>
+</body>
+</html>

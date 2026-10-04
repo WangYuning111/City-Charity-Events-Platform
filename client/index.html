@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City Charity Events Platform — Connecting Hearts, Sharing Warmth</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ===== Navbar ===== -->
+<nav class="navbar">
+    <div class="nav-brand">
+        <span class="brand-icon">❤️</span>
+        <span class="brand-text">CityCharity</span>
+    </div>
+    <div class="nav-toggle" id="navToggle" onclick="toggleMenu()">
+        <span></span><span></span><span></span>
+    </div>
+    <div class="nav-links" id="navLinks">
+        <a href="index.html" class="active">Home</a>
+        <a href="search.html">Search Events</a>
+        <a href="index.html#about">About Us</a>
+        <a href="index.html#events">All Events</a>
+    </div>
+</nav>
+
+<!-- ===== Hero Section ===== -->
+<header class="hero">
+    <div class="hero-content">
+        <h1>Connecting Hearts, Sharing Warmth Across the City</h1>
+        <p class="hero-subtitle">
+            We are dedicated to connecting compassionate citizens with communities in need.<br>
+            Through diverse charity events, we make giving back an integral part of city life.
+        </p>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <span class="stat-number" id="statEvents">10+</span>
+                <span class="stat-label">Charity Events</span>
+            </div>
+            <div class="hero-stat">
+                <span class="stat-number" id="statOrgs">4</span>
+                <span class="stat-label">Organizations</span>
+            </div>
+            <div class="hero-stat">
+                <span class="stat-number" id="statRaised">$990K+</span>
+                <span class="stat-label">Funds Raised</span>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- ===== About Us ===== -->
+<section class="about-section" id="about">
+    <div class="container">
+        <div class="section-header reveal">
+            <h2>About Us</h2>
+            <p>City Charity Events Platform — Where Every Act of Kindness Finds Its Place</p>
+        </div>
+        <div class="about-grid">
+            <div class="about-card reveal">
+                <span class="about-icon">🎯</span>
+                <h3>Our Mission</h3>
+                <p>We build a city-wide platform that connects charitable organizations directly with the public, lowering participation barriers so everyone can easily contribute to community welfare.</p>
+            </div>
+            <div class="about-card reveal">
+                <span class="about-icon">🤝</span>
+                <h3>Our Vision</h3>
+                <p>To foster a warm and compassionate urban community where charity is accessible to all. Through the power of technology, small acts of kindness can grow into forces that transform our city.</p>
+            </div>
+            <div class="about-card reveal">
+                <span class="about-icon">📋</span>
+                <h3>Transparency</h3>
+                <p>Every donation and project milestone is publicly visible in real time. Track fundraising progress and see exactly how your generosity translates into real impact.</p>
+            </div>
+            <div class="about-card reveal">
+                <span class="about-icon">🌟</span>
+                <h3>Diverse Participation</h3>
+                <p>From gala dinners to community service, from fun runs to charity lectures — we offer a wide variety of event formats so there is always a way for you to express your compassion.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Events Listing ===== -->
+<section class="events-section" id="events">
+    <div class="container">
+        <div class="section-header reveal">
+            <h2>Active &amp; Upcoming Events</h2>
+            <p>Discover charity events you care about and get involved today</p>
+        </div>
+        <div id="eventsContainer">
+            <!-- Loading spinner -->
+            <div class="loading" id="eventsLoading">
+                <div class="spinner"></div>
+                <p>Loading events...</p>
+            </div>
+        </div>
+        <div class="error-message" id="eventsError"></div>
+    </div>
+</section>
+
+<!-- ===== Footer ===== -->
+<footer class="footer">
+    <div class="footer-grid">
+        <div class="footer-col">
+            <h3>CityCharity</h3>
+            <p>We are dedicated to bridging the gap for urban charitable causes, making it easy for every citizen to participate in charity events and contribute to building a warmer community.</p>
+        </div>
+        <div class="footer-col">
+            <h3>Quick Links</h3>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="search.html">Search Events</a></li>
+                <li><a href="index.html#about">About Us</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h3>Contact Us</h3>
+            <p>📧 13043716833@163.com</p>
+            <p>📞 13043716833</p>
+            <p>📍 Charity Tower, City CBD</p>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <p>&copy; 2026 City Charity Events Platform. All rights reserved. | PROG2002 Web Development II</p>
+    </div>
+</footer>
+
+<!-- Scroll to Top -->
+<button class="scroll-to-top" id="scrollToTop" title="Back to Top">⬆</button>
+
+<script src="js/home.js"></script>
+</body>
+</html>
