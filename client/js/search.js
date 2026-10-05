@@ -200,6 +200,7 @@ async function searchEvents(e) {
     const date = document.getElementById('filterDate').value.trim();
     const location = document.getElementById('filterLocation').value.trim();
     const category = document.getElementById('filterCategory').value;
+    const freeOnly = document.getElementById('filterFreeOnly').checked;
 
     // Show loading spinner
     document.getElementById('searchLoading').style.display = 'block';
@@ -212,6 +213,7 @@ async function searchEvents(e) {
     if (date) params.append('date', date);
     if (location) params.append('location', location);
     if (category) params.append('category', category);
+    if (freeOnly) params.append('freeOnly', '1');
 
     try {
         const response = await fetch(`${API_BASE}/api/events/search?${params.toString()}`);
@@ -241,6 +243,7 @@ async function searchEvents(e) {
             const catName = catSelect.options[catSelect.selectedIndex].text.split(' (')[0];
             filters.push(`Category: ${catName}`);
         }
+        if (freeOnly) filters.push('Free events only');
         
         const filterDesc = filters.length > 0 ? ` | Filters: ${filters.join(', ')}` : '';
         document.getElementById('resultsCount').textContent = `Found ${result.data.length} event(s)${filterDesc}`;
@@ -285,6 +288,7 @@ function clearFilters() {
     document.getElementById('filterDate').value = '';
     document.getElementById('filterLocation').value = '';
     document.getElementById('filterCategory').value = '';
+    document.getElementById('filterFreeOnly').checked = false;
     hideError();
     
     // Clear results

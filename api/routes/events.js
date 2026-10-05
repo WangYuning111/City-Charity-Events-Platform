@@ -62,7 +62,7 @@ router.get('/', async (req, res) => {
 // ============================================
 router.get('/search', async (req, res) => {
     try {
-        const { date, location, category } = req.query;
+        const { date, location, category, freeOnly } = req.query;
 
         // Build dynamic SQL query
         let sql = `
@@ -106,6 +106,11 @@ router.get('/search', async (req, res) => {
         if (category) {
             sql += ' AND c.category_id = ?';
             params.push(parseInt(category));
+        }
+
+        // Free events only filter
+        if (freeOnly === '1') {
+            sql += ' AND (e.ticket_price = 0 OR e.ticket_price IS NULL)';
         }
 
         sql += ' ORDER BY e.event_date ASC, e.event_time ASC';
