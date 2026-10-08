@@ -12,8 +12,11 @@ function formatDate(dateStr) {
     if (!dateStr) return '';
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    // Parse date parts manually to avoid timezone shift
-    const parts = dateStr.split('-');
+    // Normalise to the plain YYYY-MM-DD part first. The API may serialise a
+    // DATE column as a full ISO timestamp whose UTC date is one day behind the
+    // local calendar date, so slicing the first 10 characters avoids both the
+    // off-by-one day bug and any timezone shift.
+    const parts = String(dateStr).substring(0, 10).split('-');
     const year = parseInt(parts[0]);
     const month = parseInt(parts[1]);
     const day = parseInt(parts[2]);
@@ -66,7 +69,10 @@ function getProgressPercent(current, goal) {
 // ============================================
 function getCountdownText(dateStr, status) {
     if (status === 'past' || status === 'suspended') return '';
-    const eventDate = new Date(dateStr + 'T00:00:00');
+    // Use only the calendar date. Appending to a full ISO string would produce
+    // an Invalid Date and render "NaN month(s) left".
+    const eventDate = new Date(String(dateStr).substring(0, 10) + 'T00:00:00');
+    if (isNaN(eventDate.getTime())) return '';
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     const diffMs = eventDate - now;

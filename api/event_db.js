@@ -13,6 +13,12 @@ const pool = mysql.createPool({
     password: '',
     database: 'charityevents_db',
     charset: 'utf8mb4',
+    // Return DATE / DATETIME / TIMESTAMP columns as plain strings.
+    // Without this, mysql2 converts a DATE such as '2026-10-18' into a JS Date
+    // at local midnight, which JSON-serialises as '2026-10-17T16:00:00.000Z'
+    // (UTC). The client would then read the UTC day and render the event one
+    // day early, and countdown maths on the full ISO string yields NaN.
+    dateStrings: true,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,

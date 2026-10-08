@@ -12,8 +12,11 @@ function formatDate(dateStr) {
     if (!dateStr) return '';
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    // Parse date parts manually to avoid timezone shift
-    const parts = dateStr.split('-');
+    // Normalise to the plain YYYY-MM-DD part first. The API may serialise a
+    // DATE column as a full ISO timestamp whose UTC date is one day behind the
+    // local calendar date, so slicing the first 10 characters avoids both the
+    // off-by-one day bug and any timezone shift.
+    const parts = String(dateStr).substring(0, 10).split('-');
     const year = parseInt(parts[0]);
     const month = parseInt(parts[1]);
     const day = parseInt(parts[2]);
@@ -59,7 +62,9 @@ function getStatusBadge(status) {
 function getDetailedCountdown(dateStr, timeStr, status) {
     if (status === 'past' || status === 'suspended') return null;
     
-    const eventDateTime = new Date(dateStr + 'T' + timeStr);
+    // Use only the calendar date; a full ISO string would be an Invalid Date.
+    const eventDateTime = new Date(String(dateStr).substring(0, 10) + 'T' + timeStr);
+    if (isNaN(eventDateTime.getTime())) return null;
     const now = new Date();
     const diffMs = eventDateTime - now;
     
