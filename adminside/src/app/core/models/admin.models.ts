@@ -11,6 +11,8 @@ export interface EventRegistration {
   tickets_purchased: number;
   registration_date: string;
   special_requests: string | null;
+  /** Joined by GET /api/registrations so the dashboard can label each row. */
+  event_name?: string;
 }
 
 export interface EventCategory {

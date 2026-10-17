@@ -1,0 +1,251 @@
+<div class="page-head">
+  <div>
+    <h1>Overview</h1>
+    <p>A live summary of the catalogue, its registrations and its fundraising.</p>
+  </div>
+  <div class="row">
+    <a class="btn btn-outline" routerLink="/events">Manage events</a>
+    <a class="btn btn-primary" routerLink="/events/new">＋ New event</a>
+  </div>
+</div>
+
+@if (error()) {
+  <div class="alert alert-error" role="alert">
+    <span>⚠️</span>
+    <span style="flex: 1">{{ error() }}</span>
+    <button type="button" class="btn btn-sm btn-outline" (click)="load()">Retry</button>
+  </div>
+}
+
+@if (loading()) {
+  <div class="loading">
+    <div class="spinner"></div>
+    <span>Loading dashboard…</span>
+  </div>
+} @else {
+  <!-- ===== Headline figures ===== -->
+  <div class="stat-strip">
+    <div class="stat-card">
+      <span class="stat-label">Total events</span>
+      <span class="stat-value">{{ totalEvents() }}</span>
+      <span class="stat-foot">{{ liveEvents() }} live</span>
+    </div>
+
+    <div class="stat-card">
+      <span class="stat-label">Registrations</span>
+      <span class="stat-value">{{ totalRegistrations() }}</span>
+      <span class="stat-foot">across all events</span>
+    </div>
+
+    <div class="stat-card">
+      <span class="stat-label">Tickets sold</span>
+      <span class="stat-value">{{ ticketsSold() }}</span>
+      <span class="stat-foot">attendee places</span>
+    </div>
+
+    <div class="stat-card">
+      <span class="stat-label">Funds raised</span>
+      <span class="stat-value">{{ money(raised()) }}</span>
+      <span class="stat-foot">{{ raisedPct() }}% of {{ money(goal()) }}</span>
+    </div>
+  </div>
+
+  <!-- ===== Recent registrations + status mix ===== -->
+  <div class="dash-grid">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Recent registrations</h2>
+        <span class="small text-muted">Newest first</span>
+      </div>
+
+      @if (recentRegistrations().length === 0) {
+        <div class="empty-state">
+          <span class="icon">🎟️</span>
+          <h3>No registrations yet</h3>
+          <p>They will appear here as soon as visitors sign up.</p>
+        </div>
+      } @else {
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Attendee</th>
+                <th>Event</th>
+                <th>Tickets</th>
+                <th>Registered</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (reg of recentRegistrations(); track reg.registration_id) {
+                <tr>
+                  <td>
+                    <div class="cell-name">{{ reg.attendee_name }}</div>
+                    <div class="cell-sub">{{ reg.attendee_email }}</div>
+                  </td>
+                  <td>{{ reg.event_name }}</td>
+                  <td class="num">{{ reg.tickets_purchased }}</td>
+                  <td class="cell-sub">{{ dateTimeText(reg.registration_date) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Event status mix</h2>
+      </div>
+      <div class="panel-body">
+        @for (slice of statusBreakdown(); track slice.status) {
+          <div class="mix-row">
+            <div class="mix-head">
+              <span class="mix-label">{{ slice.label }}</span>
+              <span class="mix-count">{{ slice.count }}</span>
+            </div>
+            <div class="mix-track">
+              <div
+                class="mix-fill"
+                [class]="'mix-fill status-' + slice.status"
+                [style.width.%]="slice.count > 0 ? Math.max(slice.pct, 4) : 0"
+              ></div>
+            </div>
+          </div>
+        }
+
+        <p class="field-hint" style="margin-top: 0.9rem">
+          Only <strong>active</strong> and <strong>upcoming</strong> events reach the public site.
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== Category mix + fundraising ===== -->
+  <div class="dash-grid">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Events by category</h2>
+        <span class="small text-muted">{{ categoryBreakdown().length }} categories</span>
+      </div>
+      <div class="panel-body">
+        @for (row of categoryBreakdown(); track row.label) {
+          <div class="mix-row">
+            <div class="mix-head">
+              <span class="mix-label">{{ row.label }}</span>
+              <span class="mix-count">{{ row.count }}</span>
+            </div>
+            <div class="mix-track">
+              <div class="mix-fill status-category" [style.width.%]="Math.max(row.pct, 3)"></div>
+            </div>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Fundraising</h2>
+        <span class="small text-muted">{{ raisedPct() }}% of overall goal</span>
+      </div>
+      <div class="panel-body">
+        <div class="goal-numbers">
+          <span>Raised<strong>{{ money(raised()) }}</strong></span>
+          <span>Goal<strong>{{ money(goal()) }}</strong></span>
+        </div>
+
+        <div class="progress-bar" style="height: 12px">
+          <div class="progress-fill" [style.width.%]="raisedPct()"></div>
+        </div>
+
+        <h3 class="leader-title">Top events by amount raised</h3>
+
+        @if (topFundraisers().length === 0) {
+          <p class="field-hint">No event has a fundraising target yet.</p>
+        } @else {
+          @for (event of topFundraisers(); track event.event_id) {
+            <div class="leader-row">
+              <div class="leader-main">
+                <a class="leader-name" [routerLink]="['/events', event.event_id, 'edit']">
+                  {{ event.event_name }}
+                </a>
+                <span class="cell-sub">
+                  {{ money(event.current_amount) }} of {{ money(event.goal_amount) }}
+                </span>
+              </div>
+              <span class="pill">{{ eventProgress(event) }}%</span>
+            </div>
+          }
+        }
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== Busiest events ===== -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Busiest events</h2>
+      <span class="small text-muted">Ranked by registration count</span>
+    </div>
+
+    @if (busiestEvents().length === 0) {
+      <div class="empty-state">
+        <span class="icon">📊</span>
+        <h3>No registrations across the catalogue</h3>
+        <p>Share an event on the public site to start collecting sign-ups.</p>
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th>Registrations</th>
+              <th>Tickets</th>
+              <th>Capacity used</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (event of busiestEvents(); track event.event_id) {
+              <tr>
+                <td>
+                  <a class="cell-name" [routerLink]="['/events', event.event_id, 'edit']">
+                    {{ event.event_name }}
+                  </a>
+                  <div class="cell-sub">{{ event.category_name }}</div>
+                </td>
+                <td>{{ dateText(event.event_date) }}</td>
+                <td>
+                  <span [class]="'badge badge-' + event.status">
+                    {{ statusText(event.status) }}
+                  </span>
+                </td>
+                <td class="num">{{ event.registration_count ?? 0 }}</td>
+                <td class="num">{{ event.tickets_sold ?? 0 }}</td>
+                <td>
+                  @if (hasCapacity(event)) {
+                    <div class="fill-cell">
+                      <div class="mix-track">
+                        <div
+                          class="mix-fill status-active"
+                          [style.width.%]="fillRate(event) > 0 ? Math.max(fillRate(event), 2) : 0"
+                        ></div>
+                      </div>
+                      <span class="cell-sub" style="min-width: 42px; text-align: right">
+                        {{ fillRate(event) }}%
+                      </span>
+                    </div>
+                  } @else {
+                    <span class="cell-sub">Unlimited</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+}

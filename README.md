@@ -399,7 +399,8 @@ src/app/
 
 | Route | Screen |
 |---|---|
-| `/` | Event list — stats, search, status filter, edit/delete |
+| `/` | Dashboard — headline figures, status and category mix, recent registrations, fundraising leaderboard |
+| `/events` | Event list — stats, search, status/category filters, sorting, edit/delete |
 | `/events/new` | Create form |
 | `/events/:id/edit` | Edit form + that event's registrations |
 
@@ -496,9 +497,11 @@ The hero figures are computed from the API response, not hard-coded. Each card c
 
 ### Admin console
 
-| Event list with registration counts | Delete blocked by the integrity rule |
+| Dashboard — live overview | Event list with registration counts |
 |---|---|
-| ![Admin event list with statistics and statuses](docs/screenshots/a3/a3-06-admin-list.png) | ![Delete refused because the event has registrations](docs/screenshots/a3/a3-07-admin-delete-blocked.png) |
+| ![Admin dashboard with KPIs, status mix, recent registrations and fundraising](docs/screenshots/a3/a3-08-admin-dashboard.png) | ![Admin event list with statistics and statuses](docs/screenshots/a3/a3-06-admin-list.png) |
+
+![Delete blocked by the data-integrity rule](docs/screenshots/a3/a3-07-admin-delete-blocked.png)
 
 ---
 
@@ -990,7 +993,8 @@ src/app/
 
 | 路由 | 页面 |
 |---|---|
-| `/` | 活动列表 —— 统计、搜索、状态过滤、编辑/删除 |
+| `/` | 仪表盘 —— 关键指标、状态与类别分布、最新报名、筹款排行 |
+| `/events` | 活动列表 —— 统计、搜索、状态/类别过滤、排序、编辑/删除 |
 | `/events/new` | 新建表单 |
 | `/events/:id/edit` | 编辑表单 + 该活动的报名数据 |
 
@@ -1087,9 +1091,11 @@ https://api.open-meteo.com/v1/forecast
 
 ### 管理后台
 
-| 活动列表与报名统计 | 删除被完整性规则拦截 |
+| 仪表盘 —— 实时概览 | 活动列表与报名统计 |
 |---|---|
-| ![管理端活动列表、统计与状态](docs/screenshots/a3/a3-06-admin-list.png) | ![因存在报名而拒绝删除](docs/screenshots/a3/a3-07-admin-delete-blocked.png) |
+| ![管理端仪表盘：关键指标、状态分布、最新报名与筹款排行](docs/screenshots/a3/a3-08-admin-dashboard.png) | ![管理端活动列表、统计与状态](docs/screenshots/a3/a3-06-admin-list.png) |
+
+![删除被完整性规则拦截](docs/screenshots/a3/a3-07-admin-delete-blocked.png)
 
 ---
 

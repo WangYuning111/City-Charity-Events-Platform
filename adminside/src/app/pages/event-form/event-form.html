@@ -9,7 +9,7 @@
       }
     </p>
   </div>
-  <a class="btn btn-outline" routerLink="/">← Back to events</a>
+  <a class="btn btn-outline" routerLink="/events">← Back to events</a>
 </div>
 
 @if (error()) {
@@ -336,7 +336,7 @@
         </div>
 
         <div class="form-actions">
-          <a class="btn btn-outline" routerLink="/">Cancel</a>
+          <a class="btn btn-outline" routerLink="/events">Cancel</a>
           <button type="submit" class="btn btn-primary btn-lg" [disabled]="saving()">
             {{ saving() ? 'Saving…' : isEdit() ? '💾 Save changes' : '＋ Create event' }}
           </button>

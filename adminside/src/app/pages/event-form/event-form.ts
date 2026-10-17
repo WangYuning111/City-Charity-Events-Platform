@@ -179,7 +179,7 @@ export class EventForm implements OnInit, HasUnsavedChanges {
       next: () => {
         this.saving.set(false);
         this.saved.set(true);
-        this.router.navigate(['/'], {
+        this.router.navigate(['/events'], {
           queryParams: { saved: this.isEdit() ? 'updated' : 'created' },
         });
       },

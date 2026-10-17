@@ -9,15 +9,24 @@
     <nav class="admin-nav" aria-label="Admin sections">
       <a
         routerLink="/"
-        [class.active]="!onCreateScreen()"
-        [attr.aria-current]="onCreateScreen() ? null : 'page'"
+        [class.active]="onDashboard()"
+        [attr.aria-current]="onDashboard() ? 'page' : null"
+      >
+        Dashboard
+      </a>
+
+      <a
+        routerLink="/events"
+        [class.active]="onEvents()"
+        [attr.aria-current]="onEvents() ? 'page' : null"
       >
         Events
       </a>
+
       <a
         routerLink="/events/new"
-        [class.active]="onCreateScreen()"
-        [attr.aria-current]="onCreateScreen() ? 'page' : null"
+        [class.active]="onCreate()"
+        [attr.aria-current]="onCreate() ? 'page' : null"
       >
         New Event
       </a>

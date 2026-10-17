@@ -21,10 +21,16 @@ export class App {
     { initialValue: this.router.url }
   );
 
+  /** Path only — query strings such as ?saved=created must not affect the nav. */
+  private readonly path = computed(() => this.url().split('?')[0].split('#')[0]);
+
+  readonly onDashboard = computed(() => this.path() === '/');
+  readonly onCreate = computed(() => this.path().startsWith('/events/new'));
+
   /**
-   * "New event" owns the create screen. "Events" owns everything else,
-   * including the edit screen — which plain routerLinkActive cannot express,
-   * because /events/:id/edit is not a child route of "/".
+   * The events section owns both the list and the edit screen. Plain
+   * routerLinkActive cannot express that, because /events/:id/edit is not a
+   * child route of /events in any way the directive understands.
    */
-  readonly onCreateScreen = computed(() => this.url().startsWith('/events/new'));
+  readonly onEvents = computed(() => this.path().startsWith('/events') && !this.onCreate());
 }
