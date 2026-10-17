@@ -1,0 +1,108 @@
+<header class="hero">
+  <div class="hero-content">
+    <h1>Connecting Hearts, Sharing Warmth Across the City</h1>
+    <p class="hero-subtitle">
+      We connect compassionate citizens with communities in need. Through diverse charity
+      events, we make giving back an integral part of city life.
+    </p>
+
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="stat-number">{{ eventCount() }}+</span>
+        <span class="stat-label">Charity Events</span>
+      </div>
+      <div class="hero-stat">
+        <span class="stat-number">{{ organisationCount() }}</span>
+        <span class="stat-label">Organizations</span>
+      </div>
+      <div class="hero-stat">
+        <span class="stat-number">{{ raisedLabel() }}+</span>
+        <span class="stat-label">Funds Raised</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="section section-alt" id="about">
+  <div class="container">
+    <div class="section-header">
+      <h2>About Us</h2>
+      <p>City Charity Events Platform — where every act of kindness finds its place</p>
+    </div>
+
+    <div class="about-grid">
+      <div class="about-card">
+        <span class="about-icon">🎯</span>
+        <h3>Our Mission</h3>
+        <p>
+          We build a city-wide platform that connects charitable organisations directly with
+          the public, lowering participation barriers so everyone can contribute to community
+          welfare.
+        </p>
+      </div>
+
+      <div class="about-card">
+        <span class="about-icon">🤝</span>
+        <h3>Our Vision</h3>
+        <p>
+          To foster a warm, compassionate urban community where charity is accessible to all.
+          Through technology, small acts of kindness grow into forces that transform our city.
+        </p>
+      </div>
+
+      <div class="about-card">
+        <span class="about-icon">📋</span>
+        <h3>Transparency</h3>
+        <p>
+          Every donation and project milestone is publicly visible in real time. Track
+          fundraising progress and see exactly how your generosity translates into impact.
+        </p>
+      </div>
+
+      <div class="about-card">
+        <span class="about-icon">🌟</span>
+        <h3>Diverse Participation</h3>
+        <p>
+          From gala dinners to community service, from fun runs to charity lectures — there is
+          always a way for you to express your compassion.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="events">
+  <div class="container">
+    <div class="section-header">
+      <h2>Active &amp; Upcoming Events</h2>
+      <p>Discover charity events you care about and get involved today</p>
+    </div>
+
+    @if (loading()) {
+      <div class="loading">
+        <div class="spinner"></div>
+        <p>Loading events…</p>
+      </div>
+    } @else if (error()) {
+      <div class="alert alert-error">
+        <span>⚠️</span>
+        <span>{{ error() }}</span>
+      </div>
+      <div style="text-align: center">
+        <button type="button" class="btn btn-primary" (click)="loadEvents()">Try again</button>
+      </div>
+    } @else if (events().length === 0) {
+      <div class="empty-state">
+        <span class="icon">📭</span>
+        <h3>No active events right now</h3>
+        <p>Please check back soon — new charity events are published regularly.</p>
+      </div>
+    } @else {
+      <div class="events-grid">
+        @for (event of events(); track event.event_id) {
+          <app-event-card [event]="event" />
+        }
+      </div>
+    }
+  </div>
+</section>

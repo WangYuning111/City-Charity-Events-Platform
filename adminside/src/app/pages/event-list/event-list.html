@@ -1,0 +1,170 @@
+<div class="page-head">
+  <div>
+    <h1>Charity events</h1>
+    <p>Create, update and remove events. Every status is listed here, including past and suspended events.</p>
+  </div>
+  <a class="btn btn-primary" routerLink="/events/new">＋ New event</a>
+</div>
+
+<!-- ===== Feedback ===== -->
+@if (notice()) {
+  <div class="alert alert-success">
+    <span>✓</span>
+    <span style="flex: 1">{{ notice() }}</span>
+    <button type="button" class="btn btn-sm btn-outline" (click)="dismissNotice()">Dismiss</button>
+  </div>
+}
+
+@if (error()) {
+  <div class="alert alert-error">
+    <span>⚠️</span>
+    <span style="flex: 1">{{ error() }}</span>
+    <button type="button" class="btn btn-sm btn-outline" (click)="dismissError()">Dismiss</button>
+  </div>
+}
+
+<!-- ===== Stats ===== -->
+<div class="stat-strip">
+  <div class="stat-card">
+    <span class="stat-label">Total events</span>
+    <span class="stat-value">{{ stats().total }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Live (active + upcoming)</span>
+    <span class="stat-value">{{ stats().live }}</span>
+  </div>
+  <div class="stat-card warn">
+    <span class="stat-label">Suspended</span>
+    <span class="stat-value">{{ stats().suspended }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Registrations</span>
+    <span class="stat-value">{{ stats().registrations }}</span>
+  </div>
+</div>
+
+<!-- ===== Table ===== -->
+<section class="panel">
+  <div class="panel-head">
+    <h2>All events</h2>
+
+    <div class="toolbar">
+      <input
+        type="search"
+        class="form-control"
+        placeholder="Search name, category or venue…"
+        [value]="search()"
+        (input)="search.set($any($event.target).value)"
+      />
+
+      <select
+        class="form-control"
+        style="max-width: 170px"
+        [value]="statusFilter()"
+        (change)="statusFilter.set($any($event.target).value)"
+      >
+        <option value="">All statuses</option>
+        <option value="upcoming">Upcoming</option>
+        <option value="active">Active</option>
+        <option value="past">Past</option>
+        <option value="suspended">Suspended</option>
+      </select>
+
+      <button type="button" class="btn btn-outline btn-sm" (click)="load()">↻ Refresh</button>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="loading">
+      <div class="spinner"></div>
+      <span>Loading events…</span>
+    </div>
+  } @else if (filtered().length === 0) {
+    <div class="empty-state">
+      <span class="icon">📭</span>
+      <h3>No events match this view</h3>
+      <p>Try clearing the search box or the status filter.</p>
+    </div>
+  } @else {
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Event</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Registrations</th>
+            <th>Tickets</th>
+            <th style="text-align: right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (event of filtered(); track event.event_id) {
+            <tr>
+              <td class="num">{{ event.event_id }}</td>
+
+              <td>
+                <div class="cell-name">{{ event.event_name }}</div>
+                <div class="cell-sub">
+                  {{ event.category_name }} · {{ event.location }}
+                </div>
+              </td>
+
+              <td>{{ dateText(event.event_date) }}</td>
+
+              <td>
+                <span [class]="'badge badge-' + event.status">{{ statusText(event.status) }}</span>
+              </td>
+
+              <td>
+                <span class="pill" [class.has-regs]="(event.registration_count ?? 0) > 0">
+                  {{ event.registration_count ?? 0 }}
+                </span>
+              </td>
+
+              <td class="num">{{ event.tickets_sold ?? 0 }}</td>
+
+              <td class="cell-actions">
+                <a class="btn btn-sm btn-outline" [routerLink]="['/events', event.event_id, 'edit']">
+                  Edit
+                </a>
+                <button type="button" class="btn btn-sm btn-danger" (click)="askDelete(event)">
+                  Delete
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
+
+<!-- ===== Delete confirmation ===== -->
+@if (pendingDelete(); as target) {
+  <div class="modal-backdrop" (click)="cancelDelete()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3>Delete this event?</h3>
+      <p>
+        <strong>{{ target.event_name }}</strong> will be permanently removed.
+        @if ((target.registration_count ?? 0) > 0) {
+          <br /><br />
+          <span style="color: var(--brand-dark); font-weight: 700">
+            ⚠️ This event already has {{ target.registration_count }} registration(s).
+            The server will refuse this deletion to protect existing attendees.
+          </span>
+        }
+      </p>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" (click)="cancelDelete()" [disabled]="deleting()">
+          Cancel
+        </button>
+        <button type="button" class="btn btn-primary" (click)="confirmDelete()" [disabled]="deleting()">
+          {{ deleting() ? 'Deleting…' : 'Yes, delete' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

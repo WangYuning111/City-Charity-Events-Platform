@@ -1,0 +1,38 @@
+<div class="weather-widget">
+  <h3>🌦️ Weather at the venue</h3>
+
+  @if (unavailable()) {
+    <p class="weather-note">Location coordinates are not available for this event.</p>
+  } @else if (loading()) {
+    <p class="weather-note">Loading forecast…</p>
+  } @else if (error()) {
+    <p class="weather-note">{{ error() }}</p>
+  } @else if (today(); as day) {
+    <div class="weather-now">
+      <span class="weather-icon">{{ day.icon }}</span>
+      <div>
+        <div class="weather-desc">{{ day.description }}</div>
+        <div class="weather-temp">
+          {{ day.tempMax }}° / {{ day.tempMin }}°
+          @if (day.precipitationProbability !== null) {
+            · {{ day.precipitationProbability }}% rain
+          }
+        </div>
+      </div>
+    </div>
+
+    @if (upcomingDays().length) {
+      <div class="weather-days">
+        @for (d of upcomingDays(); track d.date) {
+          <div class="weather-day">
+            <span class="wd-date">{{ shortDate(d.date) }}</span>
+            <span class="wd-icon">{{ d.icon }}</span>
+            <span class="wd-temp">{{ d.tempMax }}° / {{ d.tempMin }}°</span>
+          </div>
+        }
+      </div>
+    }
+
+    <p class="weather-note">Forecast from Open-Meteo · {{ forecast()?.timezone }}</p>
+  }
+</div>

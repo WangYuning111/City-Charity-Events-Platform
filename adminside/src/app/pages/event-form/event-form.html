@@ -1,0 +1,401 @@
+<div class="page-head">
+  <div>
+    <h1>{{ isEdit() ? 'Edit event' : 'Create a new event' }}</h1>
+    <p>
+      @if (isEdit()) {
+        Update the details below. Existing registrations are shown but cannot be edited here.
+      } @else {
+        All fields marked with <span class="req" style="color: var(--brand)">*</span> are required.
+      }
+    </p>
+  </div>
+  <a class="btn btn-outline" routerLink="/">← Back to events</a>
+</div>
+
+@if (error()) {
+  <div class="alert alert-error">
+    <span>⚠️</span>
+    <span style="flex: 1">{{ error() }}</span>
+  </div>
+}
+
+@if (fieldErrors().length) {
+  <div class="alert alert-error">
+    <span>⚠️</span>
+    <ul>
+      @for (message of fieldErrors(); track $index) {
+        <li>{{ message }}</li>
+      }
+    </ul>
+  </div>
+}
+
+@if (loading()) {
+  <div class="loading">
+    <div class="spinner"></div>
+    <span>Loading event…</span>
+  </div>
+} @else {
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <section class="panel mb-2">
+      <div class="panel-head">
+        <h2>Basic information</h2>
+      </div>
+      <div class="panel-body">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="eventName">Event name <span class="req">*</span></label>
+            <input
+              id="eventName"
+              type="text"
+              class="form-control"
+              [class.invalid]="name.invalid && name.touched"
+              formControlName="event_name"
+              placeholder="2027 Annual Love & Charity Gala"
+            />
+            @if (name.touched && name.hasError('required')) {
+              <span class="field-error">Event name is required.</span>
+            } @else if (name.touched && name.hasError('minlength')) {
+              <span class="field-error">Event name must be at least 3 characters.</span>
+            } @else if (name.touched && name.hasError('maxlength')) {
+              <span class="field-error">Event name must be 200 characters or fewer.</span>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="category">Category <span class="req">*</span></label>
+            <select
+              id="category"
+              class="form-control"
+              [class.invalid]="category.invalid && category.touched"
+              formControlName="category_id"
+            >
+              <option value="">Select a category…</option>
+              @for (c of categories(); track c.category_id) {
+                <option [value]="c.category_id">{{ c.category_name }}</option>
+              }
+            </select>
+            @if (category.touched && category.hasError('required')) {
+              <span class="field-error">Please choose a category.</span>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="organisation">Organisation</label>
+            <select id="organisation" class="form-control" formControlName="org_id">
+              <option value="">No organisation</option>
+              @for (org of organizations(); track org.org_id) {
+                <option [value]="org.org_id">{{ org.org_name }}</option>
+              }
+            </select>
+            <span class="field-hint">Optional — leave empty for community-run events.</span>
+          </div>
+
+          <div class="form-group">
+            <label for="status">Status <span class="req">*</span></label>
+            <select id="status" class="form-control" formControlName="status">
+              @for (s of statuses; track s) {
+                <option [value]="s">{{ statusText(s) }}</option>
+              }
+            </select>
+            <span class="field-hint">
+              Only <strong>upcoming</strong> and <strong>active</strong> events appear on the public site.
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel mb-2">
+      <div class="panel-head">
+        <h2>When and where</h2>
+      </div>
+      <div class="panel-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="eventDate">Event date <span class="req">*</span></label>
+            <input
+              id="eventDate"
+              type="date"
+              class="form-control"
+              [class.invalid]="date.invalid && date.touched"
+              formControlName="event_date"
+            />
+            @if (date.touched && date.hasError('required')) {
+              <span class="field-error">Event date is required.</span>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="eventTime">Start time <span class="req">*</span></label>
+            <input
+              id="eventTime"
+              type="time"
+              class="form-control"
+              [class.invalid]="time.invalid && time.touched"
+              formControlName="event_time"
+            />
+            @if (time.touched && time.hasError('required')) {
+              <span class="field-error">Start time is required.</span>
+            }
+          </div>
+
+          <div class="form-group full">
+            <label for="location">Venue name <span class="req">*</span></label>
+            <input
+              id="location"
+              type="text"
+              class="form-control"
+              [class.invalid]="location.invalid && location.touched"
+              formControlName="location"
+              placeholder="Grand International Hotel Ballroom"
+            />
+            @if (location.touched && location.hasError('required')) {
+              <span class="field-error">Venue name is required.</span>
+            }
+          </div>
+
+          <div class="form-group full">
+            <label for="address">Street address</label>
+            <input
+              id="address"
+              type="text"
+              class="form-control"
+              formControlName="address"
+              placeholder="88 Jianguo Road, Chaoyang District, Beijing"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="latitude">Latitude</label>
+            <input
+              id="latitude"
+              type="number"
+              step="0.0000001"
+              class="form-control"
+              [class.invalid]="latitude.invalid && latitude.touched"
+              formControlName="latitude"
+              placeholder="39.9087000"
+            />
+            @if (latitude.touched && latitude.invalid) {
+              <span class="field-error">Latitude must be between -90 and 90.</span>
+            } @else {
+              <span class="field-hint">Used by the Open-Meteo weather widget.</span>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="longitude">Longitude</label>
+            <input
+              id="longitude"
+              type="number"
+              step="0.0000001"
+              class="form-control"
+              [class.invalid]="longitude.invalid && longitude.touched"
+              formControlName="longitude"
+              placeholder="116.4576000"
+            />
+            @if (longitude.touched && longitude.invalid) {
+              <span class="field-error">Longitude must be between -180 and 180.</span>
+            }
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel mb-2">
+      <div class="panel-head">
+        <h2>Tickets and fundraising</h2>
+      </div>
+      <div class="panel-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="ticketPrice">Ticket price ($) <span class="req">*</span></label>
+            <input
+              id="ticketPrice"
+              type="number"
+              step="0.01"
+              min="0"
+              class="form-control"
+              [class.invalid]="price.invalid && price.touched"
+              formControlName="ticket_price"
+            />
+            @if (price.touched && price.invalid) {
+              <span class="field-error">Ticket price cannot be negative.</span>
+            } @else {
+              <span class="field-hint">Enter 0 for a free event.</span>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="goalAmount">Fundraising goal ($)</label>
+            <input
+              id="goalAmount"
+              type="number"
+              step="0.01"
+              min="0"
+              class="form-control"
+              [class.invalid]="goal.invalid && goal.touched"
+              formControlName="goal_amount"
+            />
+            @if (goal.touched && goal.invalid) {
+              <span class="field-error">Goal cannot be negative.</span>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="currentAmount">Amount raised so far ($)</label>
+            <input
+              id="currentAmount"
+              type="number"
+              step="0.01"
+              min="0"
+              class="form-control"
+              [class.invalid]="current.invalid && current.touched"
+              formControlName="current_amount"
+            />
+            @if (current.touched && current.invalid) {
+              <span class="field-error">Amount raised cannot be negative.</span>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="maxParticipants">Maximum participants</label>
+            <input
+              id="maxParticipants"
+              type="number"
+              min="1"
+              step="1"
+              class="form-control"
+              [class.invalid]="participants.invalid && participants.touched"
+              formControlName="max_participants"
+            />
+            @if (participants.touched && participants.invalid) {
+              <span class="field-error">Capacity must be a positive whole number.</span>
+            } @else {
+              <span class="field-hint">Leave empty for unlimited capacity.</span>
+            }
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel mb-2">
+      <div class="panel-head">
+        <h2>Content</h2>
+      </div>
+      <div class="panel-body">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="shortDescription">Short summary</label>
+            <input
+              id="shortDescription"
+              type="text"
+              class="form-control"
+              [class.invalid]="shortDescription.invalid && shortDescription.touched"
+              formControlName="short_description"
+              placeholder="One sentence shown on event cards."
+            />
+            @if (shortDescription.touched && shortDescription.hasError('maxlength')) {
+              <span class="field-error">Summary must be 500 characters or fewer.</span>
+            }
+          </div>
+
+          <div class="form-group full">
+            <label for="fullDescription">Full description</label>
+            <textarea
+              id="fullDescription"
+              class="form-control"
+              rows="7"
+              formControlName="full_description"
+              placeholder="Programme, purpose and impact of the event…"
+            ></textarea>
+          </div>
+
+          <div class="form-group full">
+            <label for="imageUrl">Image URL</label>
+            <input
+              id="imageUrl"
+              type="url"
+              class="form-control"
+              formControlName="image_url"
+              placeholder="https://images.unsplash.com/photo-…"
+            />
+          </div>
+
+          <div class="form-group full">
+            <label for="organizerContact">Organiser contact</label>
+            <input
+              id="organizerContact"
+              type="text"
+              class="form-control"
+              formControlName="organizer_contact"
+              placeholder="Manager Wang +86-10-8888-0001"
+            />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <a class="btn btn-outline" routerLink="/">Cancel</a>
+          <button type="submit" class="btn btn-primary btn-lg" [disabled]="saving()">
+            {{ saving() ? 'Saving…' : isEdit() ? '💾 Save changes' : '＋ Create event' }}
+          </button>
+        </div>
+      </div>
+    </section>
+  </form>
+
+  <!-- ===== Registrations (edit mode only) ===== -->
+  @if (existing(); as ev) {
+    <section class="panel">
+      <div class="panel-head">
+        <h2>
+          Registrations
+          <span class="pill" [class.has-regs]="(ev.registrations?.length ?? 0) > 0">
+            {{ ev.registrations?.length ?? 0 }}
+          </span>
+        </h2>
+        <span class="small text-muted">
+          {{ ev.tickets_sold ?? 0 }} ticket(s) sold · newest first
+        </span>
+      </div>
+
+      @if (!ev.registrations || ev.registrations.length === 0) {
+        <div class="empty-state">
+          <span class="icon">🎟️</span>
+          <h3>No registrations for this event</h3>
+          <p>This event can therefore be deleted safely.</p>
+        </div>
+      } @else {
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Attendee</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Tickets</th>
+                <th>Registered</th>
+                <th>Requests</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (reg of ev.registrations; track reg.registration_id; let i = $index) {
+                <tr>
+                  <td class="num">{{ i + 1 }}</td>
+                  <td class="cell-name">{{ reg.attendee_name }}</td>
+                  <td>{{ reg.attendee_email }}</td>
+                  <td>{{ reg.attendee_phone || '—' }}</td>
+                  <td class="num">{{ reg.tickets_purchased }}</td>
+                  <td>{{ dateTimeText(reg.registration_date) }}</td>
+                  <td class="cell-sub">{{ reg.special_requests || '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  }
+}

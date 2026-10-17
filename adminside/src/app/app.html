@@ -1,0 +1,26 @@
+<header class="admin-bar">
+  <div class="admin-bar-inner">
+    <a class="admin-brand" routerLink="/">
+      <span class="mark">❤️</span>
+      <span>CityCharity</span>
+      <span class="env">Admin</span>
+    </a>
+
+    <nav class="admin-nav">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+        Events
+      </a>
+      <a routerLink="/events/new" routerLinkActive="active">New Event</a>
+    </nav>
+
+    <span class="spacer"></span>
+
+    <a class="site-link" href="http://localhost:4200" target="_blank" rel="noopener">
+      View public site ↗
+    </a>
+  </div>
+</header>
+
+<main class="container">
+  <router-outlet />
+</main>

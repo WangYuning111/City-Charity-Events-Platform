@@ -1,0 +1,59 @@
+<nav class="navbar">
+  <a class="nav-brand" routerLink="/">
+    <span class="brand-icon">❤️</span>
+    <span>CityCharity</span>
+  </a>
+
+  <div class="nav-links">
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+      Home
+    </a>
+    <a routerLink="/search" routerLinkActive="active">Search Events</a>
+    <a routerLink="/" fragment="about">About Us</a>
+    <a routerLink="/" fragment="events">All Events</a>
+  </div>
+</nav>
+
+<main>
+  <router-outlet />
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <h3>CityCharity</h3>
+        <p>
+          We are dedicated to bridging the gap for urban charitable causes, making it easy
+          for every citizen to participate in charity events and contribute to building a
+          warmer community.
+        </p>
+      </div>
+
+      <div>
+        <h3>Quick Links</h3>
+        <ul>
+          <li><a routerLink="/">Home</a></li>
+          <li><a routerLink="/search">Search Events</a></li>
+          <li><a routerLink="/" fragment="about">About Us</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3>Contact Us</h3>
+        <ul>
+          <li>📧 13043716833&#64;163.com</li>
+          <li>📞 13043716833</li>
+          <li>📍 Charity Tower, City CBD</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>
+        &copy; {{ year }} City Charity Events Platform · PROG2002 Web Development II ·
+        Angular 22 + Node.js + MySQL
+      </p>
+    </div>
+  </div>
+</footer>

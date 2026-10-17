@@ -1,20 +1,30 @@
-# Dependencies
+# ===== Dependencies =====
 node_modules/
 
-# SQLite database files (MySQL is the production database)
+# ===== Build output =====
+dist/
+.angular/
+*.tsbuildinfo
+
+# ===== Runtime databases (MySQL is the production database) =====
 *.db
 *.db-shm
 *.db-wal
 
-# Project requirements and reports (not for upload)
-PROG2002 A2 Assessment Brief.pdf
-PROG2002 A2 Report.docx
+# ===== Logs & local tooling =====
+*.log
+.playwright-cli/
+.playwright/
+
+# ===== Assessment material (not for upload) =====
+PROG2002*.pdf
+PROG2002*.docx
 项目要求与报告模板.md
 
-# OS files
+# ===== OS files =====
 .DS_Store
 Thumbs.db
 
-# IDE
+# ===== IDE =====
 .vscode/
 .idea/

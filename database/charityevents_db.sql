@@ -1,11 +1,26 @@
--- ============================================
--- City Charity Events Dynamic Website - Database Schema
+-- ============================================================
+-- City Charity Events Dynamic Website - Database Schema (A3)
 -- Database: charityevents_db
--- ============================================
+-- MySQL 8.x / InnoDB / utf8mb4
+--
+-- This single file contains the complete final schema AND data,
+-- so a marker can recreate the whole database with one import.
+--
+-- Changes introduced in Assessment 3:
+--   1. New `registrations` table (one row per ticket purchase).
+--   2. `events` gains latitude / longitude for the Open-Meteo
+--      weather integration.
+--   3. UNIQUE(event_id, attendee_email) enforces the business
+--      rule "a user may register for an event only once".
+--   4. registrations.event_id uses ON DELETE RESTRICT so the
+--      database itself also blocks deleting an event that has
+--      registrations (the API surfaces this as HTTP 409).
+-- ============================================================
 
--- Create database
 DROP DATABASE IF EXISTS charityevents_db;
-CREATE DATABASE charityevents_db;
+CREATE DATABASE charityevents_db
+    DEFAULT CHARACTER SET utf8mb4
+    DEFAULT COLLATE utf8mb4_unicode_ci;
 USE charityevents_db;
 
 -- ============================================
@@ -47,6 +62,8 @@ CREATE TABLE events (
     event_time TIME NOT NULL,
     location VARCHAR(255) NOT NULL,
     address TEXT,
+    latitude DECIMAL(10,7) DEFAULT NULL,
+    longitude DECIMAL(10,7) DEFAULT NULL,
     image_url VARCHAR(255),
     ticket_price DECIMAL(10,2) DEFAULT 0.00,
     goal_amount DECIMAL(12,2) DEFAULT 0.00,
@@ -56,9 +73,40 @@ CREATE TABLE events (
     organizer_contact VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (category_id) REFERENCES categories(category_id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    FOREIGN KEY (org_id) REFERENCES organizations(org_id) ON DELETE SET NULL ON UPDATE CASCADE
+    CONSTRAINT fk_events_category FOREIGN KEY (category_id)
+        REFERENCES categories(category_id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_events_org FOREIGN KEY (org_id)
+        REFERENCES organizations(org_id) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- Table 4: Event Registrations (NEW in A3)
+-- One row = one ticket purchase for one event by one attendee.
+-- ============================================
+CREATE TABLE registrations (
+    registration_id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NOT NULL,
+    attendee_name VARCHAR(150) NOT NULL,
+    attendee_email VARCHAR(150) NOT NULL,
+    attendee_phone VARCHAR(30),
+    tickets_purchased INT NOT NULL DEFAULT 1,
+    registration_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    special_requests VARCHAR(255) DEFAULT NULL,
+    CONSTRAINT fk_registrations_event FOREIGN KEY (event_id)
+        REFERENCES events(event_id) ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT chk_registrations_tickets CHECK (tickets_purchased > 0),
+    -- A user may register for many events, but only once per event.
+    CONSTRAINT uq_registration_event_email UNIQUE (event_id, attendee_email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- Indexes for the query hot paths
+-- ============================================
+CREATE INDEX idx_events_status   ON events(status);
+CREATE INDEX idx_events_date     ON events(event_date);
+CREATE INDEX idx_events_category ON events(category_id);
+CREATE INDEX idx_registrations_event ON registrations(event_id);
+CREATE INDEX idx_registrations_date  ON registrations(registration_date);
 
 -- ============================================
 -- Seed Data: Organizations
@@ -83,86 +131,116 @@ INSERT INTO categories (category_name, category_description, icon_class) VALUES
 ('Outdoor Adventure', 'Challenging yourself while fundraising through adventure activities', 'icon-adventure');
 
 -- ============================================
--- Seed Data: Charity Events (10 sample events)
+-- Seed Data: Charity Events (10 events, with geo coordinates)
 -- ============================================
-INSERT INTO events (event_name, short_description, full_description, category_id, org_id, event_date, event_time, location, address, image_url, ticket_price, goal_amount, current_amount, status, max_participants, organizer_contact) VALUES
+INSERT INTO events (event_name, short_description, full_description, category_id, org_id, event_date, event_time, location, address, latitude, longitude, image_url, ticket_price, goal_amount, current_amount, status, max_participants, organizer_contact) VALUES
 
--- Event 1: Charity Gala
 ('2026 Annual Love & Charity Gala',
- 'Bringing together the city\'s finest for an evening of compassion. A night filled with warmth, inspiration, and giving.',
+ 'Bringing together the city''s finest for an evening of compassion. A night filled with warmth, inspiration, and giving.',
  'The 2026 Annual Love & Charity Gala is one of the most impactful charity events of the year. Held at a five-star luxury hotel, the gala will welcome distinguished guests, business leaders, and philanthropists from across the community.\n\nGala Program:\n• Welcome Address & Year in Review\n• Beneficiary Story Sharing\n• Live Charity Auction\n• Captivating Artistic Performances\n• Donation Ceremony\n\nAll ticket revenue and auction proceeds will go toward educational support programs for children from underprivileged families. Your participation will bring hope to hundreds of children.',
- 1, 1, '2026-12-15', '18:30:00', 'Grand International Hotel Ballroom', '88 Jianguo Road, Chaoyang District, Grand International Hotel 3F',
+ 1, 1, '2026-12-15', '18:30:00', 'Grand International Hotel Ballroom', '88 Jianguo Road, Chaoyang District, Beijing',
+ 39.9087000, 116.4576000,
  'https://images.unsplash.com/photo-1555244162-803834f70033?w=800',
- 500.00, 500000.00, 320000.00, 'upcoming', 500, 'Manager Wang +1-800-888-0001'),
+ 500.00, 500000.00, 320000.00, 'upcoming', 500, 'Manager Wang +86-10-8888-0001'),
 
--- Event 2: Fun Run
 ('City Charity Fun Run 2026',
  'Run for a cause! A 5K fun run promoting healthy living while making a difference.',
- 'The 3rd Annual City Charity Fun Run is happening at Central Park! This exciting event combines fun and fitness with two race categories: a 5K fun run and a 10K challenge run.\n\nEvent Highlights:\n• Color Run elements with multiple color stations along the route\n• Family & Kids category: 1K Mini Run\n• Best Costume Award contest\n• Finisher medals for all participants\n• Live music party at the finish line\n\n100% of registration fees will be donated to Green Future environmental projects. Let\'s run for health, run for love!',
- 2, 2, '2026-11-20', '08:00:00', 'Central Park', 'Zhongguancun Boulevard, Haidian District, Central Park',
+ 'The 3rd Annual City Charity Fun Run is happening at Central Park! This exciting event combines fun and fitness with two race categories: a 5K fun run and a 10K challenge run.\n\nEvent Highlights:\n• Color Run elements with multiple color stations along the route\n• Family & Kids category: 1K Mini Run\n• Best Costume Award contest\n• Finisher medals for all participants\n• Live music party at the finish line\n\n100% of registration fees will be donated to Green Future environmental projects. Let''s run for health, run for love!',
+ 2, 2, '2026-11-20', '08:00:00', 'Central Park', 'Zhongguancun Boulevard, Haidian District, Beijing',
+ 39.9836000, 116.3164000,
  'https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?w=800',
- 50.00, 200000.00, 158000.00, 'upcoming', 2000, 'Coordinator Li +1-800-888-0002'),
+ 50.00, 200000.00, 158000.00, 'upcoming', 2000, 'Coordinator Li +86-10-8888-0002'),
 
--- Event 3: Charity Auction
 ('Treasures Charity Auction',
  'Featuring rare collectibles and celebrity memorabilia — all to support education.',
  'This prestigious charity auction brings together rare and valuable items generously donated by community supporters, including fine art, celebrity memorabilia, jewelry, and more.\n\nAuction Categories:\n• Contemporary Artworks — 20 pieces\n• Celebrity-Signed Memorabilia — 15 items\n• Fine Jewelry — 10 pieces\n• Rare Wines & Collectibles\n\nAll items have been donated free of charge by caring individuals. 100% of auction proceeds will support the Star of Hope Education Fund for building schools in rural areas.',
- 3, 1, '2026-10-28', '14:00:00', 'Arts Center Auction Hall', '100 Century Avenue, Pudong District, Shanghai Arts Center',
+ 3, 1, '2026-10-28', '14:00:00', 'Arts Center Auction Hall', '100 Century Avenue, Pudong District, Shanghai',
+ 31.2352000, 121.5057000,
  'https://images.unsplash.com/photo-1544991875-5dc7b9b6d88b?w=800',
- 0.00, 800000.00, 250000.00, 'upcoming', 300, 'Director Zhang +1-800-888-0001'),
+ 0.00, 800000.00, 250000.00, 'upcoming', 300, 'Director Zhang +86-21-8888-0001'),
 
--- Event 4: Charity Concert
 ('"Melodies of Love" Charity Symphony Concert',
  'Renowned musicians unite for a breathtaking performance — music that gives back.',
- 'Presented by City Light Charity Association, the "Melodies of Love" Charity Symphony Concert features internationally acclaimed musicians in an unforgettable evening of classical music.\n\nProgram:\n• Beethoven — Symphony No. 5 in C minor\n• Tchaikovsky — Selections from Swan Lake\n• Popular Film Score Medley\n• Classical Chinese Orchestral Works\n\nSpecial Segments:\n• Guest performance by the Children\'s Choir\n• Charity impact documentary screening\n\nAll ticket revenue will be donated to the City Poverty Relief Project.',
- 4, 3, '2026-11-05', '19:00:00', 'Grand Theater Concert Hall', '1 East Chang\'an Avenue, Dongcheng District, Grand Theater',
+ 'Presented by City Light Charity Association, the "Melodies of Love" Charity Symphony Concert features internationally acclaimed musicians in an unforgettable evening of classical music.\n\nProgram:\n• Beethoven — Symphony No. 5 in C minor\n• Tchaikovsky — Selections from Swan Lake\n• Popular Film Score Medley\n• Classical Chinese Orchestral Works\n\nSpecial Segments:\n• Guest performance by the Children''s Choir\n• Charity impact documentary screening\n\nAll ticket revenue will be donated to the City Poverty Relief Project.',
+ 4, 3, '2026-11-05', '19:00:00', 'Grand Theater Concert Hall', '1 East Chang''an Avenue, Dongcheng District, Beijing',
+ 39.9075000, 116.4010000,
  'https://images.unsplash.com/photo-1507838153414-b4b713384a76?w=800',
- 200.00, 300000.00, 185000.00, 'upcoming', 800, 'Manager Chen +1-800-888-0003'),
+ 200.00, 300000.00, 185000.00, 'upcoming', 800, 'Manager Chen +86-10-8888-0003'),
 
--- Event 5: Volunteer Service (Active)
 ('Community Winter Warmth Volunteer Drive',
  'Reach out to elderly residents and families in need throughout the community this winter.',
- 'The Community Winter Warmth Drive is City Light Charity Association\'s annual winter volunteer initiative. Volunteers will be organized into teams visiting neighborhoods across the city to bring warmth to those who need it most.\n\nVolunteer Activities:\n• Visiting and spending time with elderly residents living alone\n• Delivering essential supplies (food, blankets) to families in need\n• Helping seniors with house cleaning and haircuts\n• Organizing community dumpling-making gatherings\n• Conducting fraud prevention awareness sessions\n\nLet\'s take action together and spread warmth throughout our city!',
- 5, 3, '2026-12-01', '09:00:00', 'Community Service Centers Citywide', 'Various community service centers across the city — specific group assignments will be communicated.',
+ 'The Community Winter Warmth Drive is City Light Charity Association''s annual winter volunteer initiative. Volunteers will be organized into teams visiting neighborhoods across the city to bring warmth to those who need it most.\n\nVolunteer Activities:\n• Visiting and spending time with elderly residents living alone\n• Delivering essential supplies (food, blankets) to families in need\n• Helping seniors with house cleaning and haircuts\n• Organizing community dumpling-making gatherings\n• Conducting fraud prevention awareness sessions\n\nLet''s take action together and spread warmth throughout our city!',
+ 5, 3, '2026-12-01', '09:00:00', 'Community Service Centers Citywide', 'Dongcheng District Community Centres, Beijing',
+ 39.9042000, 116.4074000,
  'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=800',
- 0.00, 50000.00, 35000.00, 'active', 200, 'Volunteer Captain Liu +1-800-888-0003'),
+ 0.00, 50000.00, 35000.00, 'active', 200, 'Volunteer Captain Liu +86-10-8888-0004'),
 
--- Event 6: Charity Bazaar (Active)
 ('Creative Hearts Charity Bazaar',
  'Handmade crafts, baked treats, pre-loved treasures — shop and do good!',
- 'The monthly Creative Hearts Charity Bazaar opens at Culture Square! This vibrant market brings together artisans, bakers, and generous citizens with all kinds of wonderful goods.\n\nMarket Stalls:\n• Arts & Crafts: Weaving, pottery, textile arts\n• Food & Bakery: Homemade cakes, cookies, jams\n• Pre-Loved Goods: Books, toys, homewares\n• Kids\' Corner: Little ones become mini vendors\n• Interactive Zone: DIY hands-on workshops\n\nAll market proceeds and stall fees are donated to support families in need within our community. Shop, discover, and do good!',
- 7, 3, '2026-10-18', '10:00:00', 'Culture Square', '200 Tianhe Road, Tianhe District, Guangzhou Culture Square',
+ 'The monthly Creative Hearts Charity Bazaar opens at Culture Square! This vibrant market brings together artisans, bakers, and generous citizens with all kinds of wonderful goods.\n\nMarket Stalls:\n• Arts & Crafts: Weaving, pottery, textile arts\n• Food & Bakery: Homemade cakes, cookies, jams\n• Pre-Loved Goods: Books, toys, homewares\n• Kids'' Corner: Little ones become mini vendors\n• Interactive Zone: DIY hands-on workshops\n\nAll market proceeds and stall fees are donated to support families in need within our community. Shop, discover, and do good!',
+ 7, 3, '2026-10-18', '10:00:00', 'Culture Square', '200 Tianhe Road, Tianhe District, Guangzhou',
+ 23.1357000, 113.3245000,
  'https://images.unsplash.com/photo-1559128010-7c1ad6e1b6a5?w=800',
- 0.00, 30000.00, 12000.00, 'active', NULL, 'Coordinator Zhao +1-800-888-0003'),
+ 0.00, 30000.00, 12000.00, 'active', NULL, 'Coordinator Zhao +86-20-8888-0005'),
 
--- Event 7: Public Lecture
 ('"Building a Better City" Charity Lecture Series',
  'Leading voices in philanthropy share insights on the future of urban charitable development.',
  'This charity lecture series brings together distinguished speakers from academia, business, and nonprofit organizations for an in-depth discussion on urban philanthropy and community building.\n\nLecture Topics:\n• Digital Transformation in Urban Philanthropy\n• Corporate Social Responsibility & Sustainable Development\n• Community Engagement & Grassroots Governance\n• Youth Philanthropy & Volunteerism\n\nIdeal for: nonprofit professionals, CSR managers, volunteers, and citizens interested in giving back.',
  6, 1, '2026-10-25', '14:00:00', 'University City Lecture Hall', 'University Town Academic Exchange Center, Nanshan District, Shenzhen',
+ 22.5937000, 113.9721000,
  'https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=800',
- 0.00, 20000.00, 8000.00, 'upcoming', 300, 'Education Officer Zhou +1-800-888-0001'),
+ 0.00, 20000.00, 8000.00, 'upcoming', 300, 'Education Officer Zhou +86-755-8888-0006'),
 
--- Event 8: Outdoor Adventure
 ('"Climb for Hope" Charity Mountain Expedition',
  'Push your limits — every step up the mountain supports education for children in rural areas.',
  'The Climb for Hope Charity Mountain Expedition challenges participants to summit peaks reaching 2,000 meters. Participants fundraise through crowdfunding before the event — every $100 raised covers one week of education for a child in a rural mountain community.\n\nItinerary:\n• Day 1: Assemble, travel to base camp, icebreaker activities\n• Day 2: Summit challenge, mountaintop ceremony, certificate presentation\n• Day 3: Reflection session, return journey\n\nChallenge yourself and contribute to rural education!',
- 8, 4, '2026-11-12', '06:30:00', 'Phoenix Mountain National Forest Park', 'Dujiangyan City, Chengdu, Sichuan — Phoenix Mountain',
+ 8, 4, '2026-11-12', '06:30:00', 'Phoenix Mountain National Forest Park', 'Dujiangyan City, Chengdu, Sichuan',
+ 30.9980000, 103.6170000,
  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800',
- 100.00, 150000.00, 92000.00, 'upcoming', 150, 'Expedition Leader +1-800-888-0004'),
+ 100.00, 150000.00, 92000.00, 'upcoming', 150, 'Expedition Leader +86-28-8888-0007'),
 
--- Event 9: Charity Gala (Past)
 ('2025 Gratitude Charity Gala',
  'Looking back at a year of charitable achievements — with gratitude to every donor.',
- 'The 2025 Gratitude Charity Gala was successfully held in December 2025. The evening celebrated the achievements of the past year\'s charity programs and recognized outstanding volunteers and donors.\n\nEvent Achievements:\n• Over $180,000 raised on the night\n• Annual "Charity Star" awards presented\n• 8 new corporate partners signed on\n• 2026 Annual Charity Plan unveiled\n\nThank you to every participant for your compassion and support!',
- 1, 1, '2025-12-20', '18:00:00', 'Grand International Hotel Ballroom', '88 Jianguo Road, Chaoyang District, Grand International Hotel',
+ 'The 2025 Gratitude Charity Gala was successfully held in December 2025. The evening celebrated the achievements of the past year''s charity programs and recognized outstanding volunteers and donors.\n\nEvent Achievements:\n• Over $180,000 raised on the night\n• Annual "Charity Star" awards presented\n• 8 new corporate partners signed on\n• 2026 Annual Charity Plan unveiled\n\nThank you to every participant for your compassion and support!',
+ 1, 1, '2025-12-20', '18:00:00', 'Grand International Hotel Ballroom', '88 Jianguo Road, Chaoyang District, Beijing',
+ 39.9087000, 116.4576000,
  'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800',
- 500.00, 500000.00, 480000.00, 'past', 500, 'Manager Wang +1-800-888-0001'),
+ 500.00, 500000.00, 480000.00, 'past', 500, 'Manager Wang +86-10-8888-0001'),
 
--- Event 10: Charity Concert (Suspended)
 ('Starlight Charity Music Festival',
  'A large outdoor music festival blending pop culture with philanthropy — currently suspended.',
  'This is a large-scale outdoor music festival that has been temporarily suspended due to venue safety approval issues. The organizing team is working with relevant authorities to resolve the matter and resume as soon as possible. Ticket holders will receive refund notifications.',
- 4, 2, '2027-01-15', '16:00:00', 'Riverside Open-Air Music Square', 'Binjiang Avenue, Pudong District, Shanghai Music Square',
+ 4, 2, '2027-01-15', '16:00:00', 'Riverside Open-Air Music Square', 'Binjiang Avenue, Pudong District, Shanghai',
+ 31.2304000, 121.4737000,
  'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800',
  300.00, 600000.00, 50000.00, 'suspended', 5000, 'Event Suspended — Awaiting Update');
+
+-- ============================================
+-- Seed Data: Registrations (13 rows across 6 events)
+-- Events 5, 7, 9 and 10 are intentionally left WITHOUT
+-- registrations so the admin "delete" flow can be demonstrated
+-- both as blocked (409) and as successful.
+-- ============================================
+INSERT INTO registrations (event_id, attendee_name, attendee_email, attendee_phone, tickets_purchased, registration_date, special_requests) VALUES
+(1, 'Alice Chen',      'alice.chen@example.com',   '+61 412 000 101', 2, '2026-09-02 10:15:00', 'Vegetarian meal please'),
+(1, 'Marcus Lee',      'marcus.lee@example.com',   '+61 412 000 102', 1, '2026-09-05 14:42:00', NULL),
+(1, 'Priya Nair',      'priya.nair@example.com',   '+61 412 000 103', 4, '2026-09-18 09:05:00', 'Corporate table for 4'),
+(2, 'Daniel Wu',       'daniel.wu@example.com',    '+61 412 000 104', 1, '2026-09-11 08:20:00', NULL),
+(2, 'Sofia Rossi',     'sofia.rossi@example.com',  '+61 412 000 105', 3, '2026-09-22 17:30:00', 'Family entry'),
+(3, 'Grace Kim',       'grace.kim@example.com',    '+61 412 000 106', 2, '2026-08-30 11:00:00', NULL),
+(3, 'Omar Haddad',     'omar.haddad@example.com',  '+61 412 000 107', 1, '2026-09-14 16:25:00', 'Interested in lot 12'),
+(4, 'Emily Zhang',     'emily.zhang@example.com',  '+61 412 000 108', 2, '2026-09-08 19:50:00', NULL),
+(6, 'Noah Patel',      'noah.patel@example.com',   '+61 412 000 109', 1, '2026-09-25 12:10:00', NULL),
+(6, 'Isabella Costa',  'isabella.costa@example.com','+61 412 000 110', 2, '2026-10-01 15:45:00', 'Bringing a friend'),
+(8, 'Liam O''Connor',  'liam.oconnor@example.com', '+61 412 000 111', 1, '2026-09-28 07:35:00', 'Experienced hiker'),
+(8, 'Yuki Tanaka',     'yuki.tanaka@example.com',  '+61 412 000 112', 1, '2026-10-03 20:05:00', NULL),
+(2, 'Hannah Brown',    'hannah.brown@example.com', '+61 412 000 113', 2, '2026-10-06 11:30:00', NULL);
+
+-- ============================================
+-- Sanity check (optional): confirm the seeded row counts
+-- SELECT
+--   (SELECT COUNT(*) FROM organizations) AS organizations,
+--   (SELECT COUNT(*) FROM categories)    AS categories,
+--   (SELECT COUNT(*) FROM events)        AS events,
+--   (SELECT COUNT(*) FROM registrations) AS registrations;
+-- ============================================

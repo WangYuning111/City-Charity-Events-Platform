@@ -1,0 +1,247 @@
+@if (loading()) {
+  <div class="container">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading event…</p>
+    </div>
+  </div>
+} @else if (loadError()) {
+  <div class="container" style="padding: 3rem 1.5rem">
+    <div class="alert alert-error">
+      <span>⚠️</span>
+      <span>{{ loadError() }}</span>
+    </div>
+    <a class="btn btn-primary" routerLink="/search">← Back to search</a>
+  </div>
+} @else if (confirmation(); as created) {
+  <!-- ================= SUCCESS STATE ================= -->
+  <div class="container" style="padding: 4rem 1.5rem; max-width: 720px">
+    <div class="panel" style="text-align: center">
+      <div style="font-size: 3rem; margin-bottom: 0.5rem">🎉</div>
+      <h1 style="font-size: 1.6rem; margin-bottom: 0.6rem">Registration confirmed</h1>
+      <p style="color: var(--text-muted); margin-bottom: 1.5rem">
+        Thank you, {{ created.attendee_name }}. Your place is booked and a confirmation has been
+        recorded against this event.
+      </p>
+
+      <div class="confirmation-grid">
+        <div>
+          <span class="info-label">Reference</span>
+          <strong>#{{ created.registration_id }}</strong>
+        </div>
+        <div>
+          <span class="info-label">Tickets</span>
+          <strong>{{ created.tickets_purchased }}</strong>
+        </div>
+        <div>
+          <span class="info-label">Email</span>
+          <strong>{{ created.attendee_email }}</strong>
+        </div>
+        <div>
+          <span class="info-label">Registered</span>
+          <strong>{{ dateTimeText(created.registration_date) }}</strong>
+        </div>
+      </div>
+
+      <div class="row" style="justify-content: center; margin-top: 1.75rem">
+        <a class="btn btn-primary" [routerLink]="['/events', id()]">View event details</a>
+        <button type="button" class="btn btn-ghost" (click)="resetForAnother()">
+          Register someone else
+        </button>
+      </div>
+    </div>
+  </div>
+} @else if (event(); as ev) {
+  <!-- ================= FORM STATE ================= -->
+  <header class="page-header">
+    <div class="container">
+      <h1>Register for this event</h1>
+      <p>{{ ev.event_name }}</p>
+    </div>
+  </header>
+
+  <div class="container">
+    <nav class="breadcrumb">
+      <a routerLink="/">Home</a>
+      <span>›</span>
+      <a routerLink="/search">Search Events</a>
+      <span>›</span>
+      <a [routerLink]="['/events', ev.event_id]">{{ ev.event_name }}</a>
+      <span>›</span>
+      <span>Register</span>
+    </nav>
+
+    <div class="detail-layout">
+      <!-- ===== Form ===== -->
+      <div class="detail-main">
+        @if (submitError()) {
+          <div class="alert alert-error">
+            <span>⚠️</span>
+            <span>{{ submitError() }}</span>
+          </div>
+        }
+
+        <section class="panel">
+          <h2>Your details</h2>
+          <p class="field-hint" style="margin-bottom: 1.25rem">
+            Fields marked with <span class="req">*</span> are required.
+          </p>
+
+          <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="attendeeName">Full name <span class="req">*</span></label>
+                <input
+                  id="attendeeName"
+                  type="text"
+                  class="form-control"
+                  [class.invalid]="name.invalid && name.touched"
+                  formControlName="attendee_name"
+                  placeholder="Jane Citizen"
+                  autocomplete="name"
+                />
+                @if (name.touched && name.hasError('required')) {
+                  <span class="field-error">Please enter your full name.</span>
+                } @else if (name.touched && name.hasError('minlength')) {
+                  <span class="field-error">Name must be at least 2 characters.</span>
+                } @else if (name.touched && name.hasError('maxlength')) {
+                  <span class="field-error">Name must be 150 characters or fewer.</span>
+                }
+              </div>
+
+              <div class="form-group">
+                <label for="attendeeEmail">Email address <span class="req">*</span></label>
+                <input
+                  id="attendeeEmail"
+                  type="email"
+                  class="form-control"
+                  [class.invalid]="email.invalid && email.touched"
+                  formControlName="attendee_email"
+                  placeholder="jane@example.com"
+                  autocomplete="email"
+                />
+                @if (email.touched && email.hasError('required')) {
+                  <span class="field-error">Please enter your email address.</span>
+                } @else if (email.touched && email.hasError('email')) {
+                  <span class="field-error">Please enter a valid email address.</span>
+                }
+              </div>
+
+              <div class="form-group">
+                <label for="attendeePhone">Phone number</label>
+                <input
+                  id="attendeePhone"
+                  type="tel"
+                  class="form-control"
+                  [class.invalid]="phone.invalid && phone.touched"
+                  formControlName="attendee_phone"
+                  placeholder="+61 400 000 000"
+                  autocomplete="tel"
+                />
+                @if (phone.touched && phone.hasError('pattern')) {
+                  <span class="field-error">Please enter a valid phone number.</span>
+                }
+              </div>
+
+              <div class="form-group">
+                <label for="tickets">Number of tickets <span class="req">*</span></label>
+                <input
+                  id="tickets"
+                  type="number"
+                  class="form-control"
+                  [class.invalid]="tickets.invalid && tickets.touched"
+                  formControlName="tickets_purchased"
+                  min="1"
+                  max="10"
+                  step="1"
+                />
+                @if (tickets.touched && tickets.hasError('required')) {
+                  <span class="field-error">Please choose how many tickets you need.</span>
+                } @else if (tickets.touched && (tickets.hasError('min') || tickets.hasError('pattern'))) {
+                  <span class="field-error">At least 1 ticket is required.</span>
+                } @else if (tickets.touched && tickets.hasError('max')) {
+                  <span class="field-error">Maximum 10 tickets per registration.</span>
+                } @else {
+                  <span class="field-hint">
+                    @if (ev.tickets_remaining !== null && ev.tickets_remaining !== undefined) {
+                      {{ ev.tickets_remaining }} ticket(s) still available.
+                    }
+                  </span>
+                }
+              </div>
+
+              <div class="form-group full">
+                <label for="specialRequests">Special requests</label>
+                <textarea
+                  id="specialRequests"
+                  class="form-control"
+                  [class.invalid]="requests.invalid && requests.touched"
+                  formControlName="special_requests"
+                  placeholder="Dietary requirements, accessibility needs, seating preferences…"
+                ></textarea>
+                @if (requests.touched && requests.hasError('maxlength')) {
+                  <span class="field-error">Please keep this under 255 characters.</span>
+                } @else {
+                  <span class="field-hint">{{ requests.value.length }} / 255</span>
+                }
+              </div>
+            </div>
+
+            <div class="summary-row">
+              <div>
+                <span class="info-label">Total due</span>
+                <strong style="font-size: 1.25rem">{{ money(totalDue()) }}</strong>
+                <span class="field-hint">
+                  ({{ ev.ticket_price > 0 ? money(ev.ticket_price) + ' × ' : 'free entry × ' }}{{ formValue().tickets_purchased }})
+                </span>
+              </div>
+              <button type="submit" class="btn btn-primary btn-lg" [disabled]="submitting()">
+                {{ submitting() ? 'Submitting…' : '✨ Confirm registration' }}
+              </button>
+            </div>
+          </form>
+        </section>
+      </div>
+
+      <!-- ===== Event summary ===== -->
+      <aside class="sticky-side">
+        <section class="panel" style="padding: 0; overflow: hidden">
+          <img
+            [src]="ev.image_url || fallbackImage"
+            [alt]="ev.event_name"
+            style="width: 100%; aspect-ratio: 16 / 10; object-fit: cover"
+            (error)="$any($event.target).src = fallbackImage"
+          />
+          <div style="padding: 1.15rem 1.25rem">
+            <span [class]="'badge badge-' + ev.status">{{ statusText(ev.status) }}</span>
+            <h3 style="margin: 0.6rem 0 0.5rem">{{ ev.event_name }}</h3>
+            <div class="info-list">
+              <div class="info-item">
+                <span class="info-icon">📅</span>
+                <span>{{ dateText(ev.event_date) }} · {{ timeText(ev.event_time) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-icon">📍</span>
+                <span>{{ ev.location }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-icon">🏷️</span>
+                <span>{{ ev.category_name }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-icon">🎫</span>
+                <span>{{ ev.ticket_price > 0 ? money(ev.ticket_price) + ' per ticket' : 'Free entry' }}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <app-weather-widget [latitude]="ev.latitude" [longitude]="ev.longitude" />
+
+        <a class="btn btn-ghost btn-block" [routerLink]="['/events', ev.event_id]">
+          ← Back to event details
+        </a>
+      </aside>
+    </div>
+  </div>
+}

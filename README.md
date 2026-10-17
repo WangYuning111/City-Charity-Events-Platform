@@ -1,12 +1,13 @@
-# City Charity Events Management Dynamic Website
+# City Charity Events Platform
 
-**A full-stack, data-driven charity event platform — MySQL · Node.js/Express · Vanilla JavaScript**
+**A three-tier dynamic web system — MySQL · Node.js/Express REST API · two Angular 22 (TypeScript) applications · Open-Meteo weather integration**
 
-[![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A518-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Angular](https://img.shields.io/badge/Angular-22.2-DD0031?logo=angular&logoColor=white)](https://angular.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A524.15-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-4.x-000000?logo=express&logoColor=white)](https://expressjs.com/)
 [![MySQL](https://img.shields.io/badge/MySQL-8.x-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![REST](https://img.shields.io/badge/API-RESTful-02569B)](https://restfulapi.net/)
-[![Frontend](https://img.shields.io/badge/Frontend-Vanilla%20JS-F7DF1E?logo=javascript&logoColor=black)]()
 
 ---
 
@@ -14,17 +15,17 @@
 
 - [1. Project Overview](#1-project-overview)
 - [2. Innovation Highlights](#2-innovation-highlights)
-- [3. Competitive Advantages](#3-competitive-advantages)
-- [4. Technical Challenges & Solutions](#4-technical-challenges--solutions)
-- [5. Technology Stack](#5-technology-stack)
-- [6. System Architecture](#6-system-architecture)
-- [7. Database Design](#7-database-design)
-- [8. API Reference](#8-api-reference)
-- [9. Project Structure](#9-project-structure)
-- [10. Getting Started](#10-getting-started)
-- [11. Demo Screenshots](#11-demo-screenshots)
-- [12. Engineering Skills Demonstrated](#12-engineering-skills-demonstrated)
-- [13. Future Work — Extensibility toward AI/ML](#13-future-work--extensibility-toward-aiml)
+- [3. System Architecture](#3-system-architecture)
+- [4. Technology Stack](#4-technology-stack)
+- [5. Database Design](#5-database-design)
+- [6. API Reference](#6-api-reference)
+- [7. Frontend Architecture (Angular 22)](#7-frontend-architecture-angular-22)
+- [8. Weather Integration](#8-weather-integration)
+- [9. Engineering Challenges \& Solutions](#9-engineering-challenges--solutions)
+- [10. Demo Screenshots](#10-demo-screenshots)
+- [11. Getting Started](#11-getting-started)
+- [12. Deployment \& Submission Packaging](#12-deployment--submission-packaging)
+- [13. Skills Demonstrated \& AI/ML Extensibility](#13-skills-demonstrated--aiml-extensibility)
 
 ---
 ---
@@ -35,294 +36,235 @@
 
 ## 1. Project Overview
 
-The **City Charity Events Management Dynamic Website** is a three-tier dynamic web application that connects charitable organizations with the public. It allows citizens to discover, filter, and inspect charity events — galas, fun runs, auctions, concerts, volunteer drives, and more — through a data-driven interface backed by a relational database and a RESTful API.
+The **City Charity Events Platform** connects charitable organisations with the public and gives staff the tools to manage the catalogue behind it. It is delivered as **three independently deployable applications** sharing one REST API and one relational database:
 
-The system is deliberately built **without any frontend framework**. Every request, response, state transition, and DOM mutation is written explicitly in vanilla JavaScript. This was a conscious engineering decision: it forces full control over the HTTP lifecycle and DOM, and demonstrates a first-principles understanding of how the web actually works — a foundation that transfers directly to backend, data-engineering, and ML-serving work.
+| Application | Stack | Port (dev) | Responsibility |
+|---|---|---|---|
+| **`clientside/`** — public website | Angular 22 + TypeScript | 4200 | Browse, search, inspect and register for events |
+| **`adminside/`** — staff console | Angular 22 + TypeScript | 4300 | Full C.R.U.D. over events, registration oversight |
+| **`api/`** — REST service | Node.js + Express + MySQL | 3000 | Data access, business rules, weather proxy |
 
-**Core capabilities delivered:**
+**Capabilities delivered**
 
-| Capability | Description |
+| Area | Capability |
 |---|---|
-| Dynamic home page | Server-filtered list of ongoing/upcoming events, rendered from live API data |
-| Multi-criteria search | Combinable filtering by **date**, **location** (fuzzy), and **category**, plus a free-events toggle |
-| Event detail page | Full description, ticket info, organizer profile, and live fundraising progress |
-| Content lifecycle | `past` / `suspended` events are automatically withheld from public listings |
-| Graceful states | Loading spinners, empty states, and error handling across every data-dependent view |
-| Responsive UI | Mobile navigation, fluid grid layouts, and reveal-on-scroll animations |
+| Public home | Live event grid with status badges, countdowns, fundraising progress |
+| Search | Freely combinable filters: date, location (fuzzy), category, free-only |
+| Event detail | Full record, organiser profile, fundraising progress, **registration list** |
+| Registration | Dedicated page, validated form, confirmation receipt, capacity checks |
+| Admin list | Every event regardless of status, with registration and ticket counts |
+| Admin create / edit | Validated forms; edit view also surfaces that event's registrations |
+| Admin delete | Blocked with HTTP **409** when registrations exist (data-integrity rule) |
+| Weather | Live Open-Meteo forecast for each event's coordinates |
 
 ---
 
 ## 2. Innovation Highlights
 
-### 2.1 Status-Driven Content Lifecycle (Business Logic in the Data Layer)
+### 2.1 Two independent Angular applications over one contract
 
-Rather than hard-coding which events to show, the platform encodes the business rule directly into the data model. The `events.status` column is an `ENUM('upcoming','active','past','suspended')`, and every public listing query enforces `WHERE status IN ('upcoming','active')`.
+Rather than shipping one SPA with an `/admin` section, the public site and the staff console are **separate Angular projects** with separate bundles, separate design systems and separate deployment targets. They share only the REST contract and a set of TypeScript domain models.
 
-This means **event visibility is a single source of truth in the database**, not scattered across application code. A suspended event disappears from the home page and search results simultaneously, with zero code changes — the lifecycle is data, not logic.
+The consequence is real: the admin application never ships a byte of public-site code, and the public site has no concept of "delete" or "update" at all. The boundary is enforced by *build topology*, not by conditional rendering.
 
-```sql
--- database/charityevents_db.sql
-status ENUM('upcoming','active','past','suspended') DEFAULT 'upcoming',
-```
+### 2.2 Business rules enforced at three layers
 
-### 2.2 Composable, Injection-Safe Dynamic Query Builder
+The rule *"an event with registrations must not be deleted"* is the clearest example of defence in depth:
 
-The search endpoint is the technical centerpiece. Instead of writing four separate queries for four filters, it **builds one SQL statement conditionally at runtime** while keeping every user value in a bound parameter array:
+| Layer | Enforcement |
+|---|---|
+| Database | `registrations.event_id` FK uses `ON DELETE RESTRICT` |
+| API | Explicit `COUNT(*)` check → HTTP **409** with counts before attempting the delete |
+| UI | Confirmation modal pre-warns, then renders the server's refusal verbatim |
+
+If the API check were bypassed, MySQL would still refuse. If the UI were bypassed, the API would still refuse. **No single layer is trusted.**
+
+### 2.3 Referential integrity that encodes policy
+
+Foreign keys are chosen to express business meaning, not merely to exist:
+
+| Relationship | Action | Why |
+|---|---|---|
+| `events.category_id → categories` | `RESTRICT` | A category still in use must not vanish |
+| `events.org_id → organizations` | `SET NULL` | An organisation may leave; its events survive unassigned |
+| `registrations.event_id → events` | `RESTRICT` | Attendee records must never be silently destroyed |
+
+### 2.4 Uniqueness and capacity as database-level guarantees
+
+*"One person may register for an event only once"* is enforced by `UNIQUE (event_id, attendee_email)`, not by a read-then-write check that could race. The API catches `ER_DUP_ENTRY` and translates it into a readable **409**. A `CHECK (tickets_purchased > 0)` constraint rejects nonsense quantities even if the API is bypassed.
+
+### 2.5 Injection-safe, composable query builder
+
+The search endpoint assembles one SQL statement at runtime while keeping every user value in a bound parameter array:
 
 ```js
-// api/routes/events.js — lines 91–118
-const params = [];
-
+// api/routes/events.js
 if (date)     { sql += ' AND e.event_date = ?';            params.push(date); }
 if (location) { sql += ' AND (e.location LIKE ? OR e.address LIKE ?)';
                 params.push(`%${location}%`, `%${location}%`); }
-if (category) { sql += ' AND c.category_id = ?';           params.push(parseInt(category)); }
-if (freeOnly === '1') { sql += ' AND (e.ticket_price = 0 OR e.ticket_price IS NULL)'; }
+if (category) { sql += ' AND c.category_id = ?';           params.push(parseInt(category, 10)); }
+if (freeOnly) { sql += ' AND (e.ticket_price = 0 OR e.ticket_price IS NULL)'; }
 
-const [rows] = await pool.execute(sql, params);   // parameterised — SQL-injection safe
+const [rows] = await pool.execute(sql, params);   // prepared statement
 ```
 
-The design achieves three things at once: **arbitrary filter combinations** (1 to 4 criteria) with no combinatorial explosion of query variants, **prepared-statement execution** that structurally prevents SQL injection, and a **single normalized result shape** for the frontend.
+Any combination of one to four filters works, with no combinatorial explosion of query variants and no string concatenation of user input.
 
-### 2.3 Single-Origin Architecture (CORS Elimination by Design)
+### 2.6 Weather behind our own API boundary
 
-Express serves both the API and the static client from the same origin:
+The browser never calls Open-Meteo directly. `GET /api/weather` proxies upstream, translates the WMO weather codes into descriptions and icons **in one place**, enforces a 10-minute cache, applies an 8-second timeout, and returns our own envelope. Two front ends therefore render identical wording, and swapping the provider later changes one file.
+
+### 2.7 A diagnosed timezone defect, fixed at the source
+
+MySQL `DATE` columns were being converted by `mysql2` into JavaScript `Date` objects at local midnight, which `JSON.stringify` serialised as a UTC instant one day behind (`2026-10-17T16:00:00.000Z`). The client read the UTC day and rendered every event **one day early**, while countdowns printed `NaN month(s) left`.
+
+The fix is two-layered — `dateStrings: true` in the pool (the cause) plus defensive date slicing on the client (the symptom):
 
 ```js
-// api/server.js — line 32
-app.use(express.static(path.join(__dirname, '..', 'client')));
+// api/event_db.js
+dateStrings: true,
+
+// clientside/src/app/shared/format.ts
+const part = String(value).substring(0, 10);
 ```
 
-Because the client and API share an origin, production cross-origin requests cannot occur, and the frontend needs no hard-coded backend URL — it derives it at runtime via `window.location.origin`. This is a deployment-simplicity decision that also removes an entire class of CORS-related failure modes.
+### 2.8 Zoneless Angular with signals throughout
 
-### 2.4 Framework-Free Rendering Pipeline
-
-The frontend implements a **pure-function render pipeline**: data objects in, HTML strings out, single DOM write.
-
-```js
-// client/js/home.js — lines 166–167
-const cardsHTML = result.data.map(event => renderEventCard(event)).join('');
-container.innerHTML = `<div class="events-grid">${cardsHTML}</div>`;
-```
-
-`renderEventCard()` is a pure function of one event object — trivially testable, free of side effects, and reusable across the home and search pages. The array is mapped and joined into a **single string**, then committed to the DOM **once**, avoiding the layout thrashing of incremental insertion (the N-reflow problem).
-
-### 2.5 Timezone-Safe Date Handling (Debugged from a UI Symptom)
-
-This is the most instructive bug in the project, because it was **found from a user-visible symptom rather than a failing test**. The home page rendered every event date one day early, and every countdown badge read `NaN month(s) left`. Both symptoms had one root cause, and fixing it required tracing a single value across all three tiers.
-
-**Root cause.** MySQL `DATE` columns were returned by the `mysql2` driver as JavaScript `Date` objects. When `res.json()` serialised them, a stored date of `2026-10-18` became `"2026-10-17T16:00:00.000Z"` — an **instant**, not a calendar date. The client then read the *UTC* day out of that string, which sits one day behind the local date:
-
-| Layer | Value |
-|---|---|
-| MySQL `DATE` column | `2026-10-18` |
-| After `mysql2` → JS `Date` | local midnight, 18 Oct (UTC+8) |
-| After `JSON.stringify` | `2026-10-17T16:00:00.000Z` |
-| Client `split('-')[2]` | `17` → **renders "Oct 17"** ✗ |
-
-The countdown failed harder still: `new Date(dateStr + 'T00:00:00')` produced an **Invalid Date** from the concatenated string, and `Math.ceil(NaN / 30)` surfaced to the user as `NaN month(s) left`.
-
-**The fix is applied at two layers — defence in depth:**
-
-```js
-// api/event_db.js — stop the driver inventing a time component
-const pool = mysql.createPool({ /* ... */ dateStrings: true });
-```
-
-```js
-// client/js/home.js — tolerate either representation, never crash
-const parts = String(dateStr).substring(0, 10).split('-');
-```
-
-The backend now emits a plain `2026-10-18`, and the frontend slices to the first ten characters so it still renders correctly if a full timestamp ever arrives. The countdown additionally guards with `isNaN(eventDate.getTime())`.
-
-**Why this matters:** the defect was invisible in the API's own output — the JSON was syntactically valid and passed every `typeof` check. It only appeared at render time, and diagnosing it required reasoning about driver type coercion, timezone conversion, and JSON serialisation simultaneously. That is the class of bug that separates "the code runs" from "the software is correct".
-
-### 2.6 Multi-Layer Validation Strategy
-
-Data integrity is validated at **four independent layers**, so no single point of failure can admit bad data:
-
-| Layer | Mechanism |
-|---|---|
-| Database | `ENUM` constraints, `NOT NULL`, foreign keys, referential actions |
-| API — parameter | `isNaN(eventId)` → HTTP **400** for malformed IDs |
-| API — existence | Empty result set → HTTP **404** with a JSON error body |
-| Client | `response.ok` check **and** business-level `result.success` check |
-
-### 2.7 Referential Integrity with Intentional Cascade Semantics
-
-Foreign keys are not merely present — their **delete behaviour encodes business policy**:
-
-- `category_id → categories` uses `ON DELETE RESTRICT`: a category that still has events **cannot** be destroyed, protecting historical records.
-- `org_id → organizations` uses `ON DELETE SET NULL`: an organization may leave, but its events **survive** as unassigned records rather than vanishing.
+Angular 22 ships zoneless change detection by default. Every screen is therefore built on `signal()` / `computed()` / `input()` rather than imperative state, so updates propagate because the *data* changed — not because a zone happened to tick.
 
 ---
 
-## 3. Competitive Advantages
+## 3. System Architecture
 
-| # | Advantage | Why it matters |
-|---|---|---|
-| 1 | **No framework dependency** | Zero frontend build step, zero npm attack surface, instant load, and demonstrable mastery of core web APIs over framework familiarity |
-| 2 | **Connection pooling** | `mysql2` pool (limit 10, keep-alive) reuses sockets instead of opening one connection per request — the difference between a toy and a load-tolerant service |
-| 3 | **N+1 query elimination** | Home, search, and detail endpoints each fetch denormalized data via `JOIN`s in **one round-trip** instead of N follow-up queries |
-| 4 | **Indexed hot paths** | Indexes on `status`, `event_date`, and `category_id` — exactly the columns the filters and sort order touch |
-| 5 | **Uniform API contract** | Every response shares the `{ success, count, data, ... }` envelope, making client handling predictable and uniform |
-| 6 | **Dual persistence path** | MySQL is the production database; an auxiliary `better-sqlite3` bootstrap (`db_init.js`) lets the project run with **zero external services** for demo purposes |
-| 7 | **Progressive UX states** | Loading, empty, error, and success render paths are all handled — the app never shows a blank screen or raw stack trace |
-| 8 | **Database-agnostic seed strategy** | Seeds are idempotent and transactional (`db.transaction()`), so a fresh database is one command away |
+```
+┌──────────────────────────┐        ┌──────────────────────────┐
+│  clientside/  :4200      │        │  adminside/   :4300      │
+│  Angular 22 + TypeScript │        │  Angular 22 + TypeScript │
+│  home · search · detail  │        │  list · create · edit    │
+│  registration · weather  │        │  delete · registrations  │
+└────────────┬─────────────┘        └────────────┬─────────────┘
+             │  HttpClient (typed)               │
+             │  /api/** proxied in dev           │
+             └───────────────┬───────────────────┘
+                             │  HTTP / JSON
+             ┌───────────────▼───────────────────────────────┐
+             │            api/  :3000  (Express)             │
+             │  cors · json · routes                         │
+             │  ├── /api/events          read + CRUD         │
+             │  ├── /api/registrations   create + list       │
+             │  ├── /api/organizations   read                │
+             │  └── /api/weather         Open-Meteo proxy    │
+             └───────────────┬───────────────────────────────┘
+                             │  mysql2 pool (10, keep-alive)
+             ┌───────────────▼───────────────────────────────┐
+             │        MySQL 8  ·  charityevents_db           │
+             │  organizations ─┐                             │
+             │                 ├── events ──> categories     │
+             │  registrations ─┘  (FKs, ENUM, indexes)       │
+             └───────────────────────────────────────────────┘
+                             │
+                    ┌────────▼─────────┐
+                    │  Open-Meteo API  │  (server-to-server)
+                    └──────────────────┘
+```
+
+**Request lifecycle — registering for an event**
+
+1. User opens `/events/1` → `EventDetail` reads the `id` route param via `withComponentInputBinding()`
+2. `EventService.getEventById(1)` → `GET /api/events/1`
+3. API runs the event query, then a second query for registrations ordered `registration_date DESC`
+4. API computes `progress_percentage`, `tickets_sold`, `tickets_remaining` server-side
+5. Angular renders the detail view and passes `latitude`/`longitude` into `WeatherWidget`
+6. `WeatherWidget` → `GET /api/weather` → Express proxies Open-Meteo → translated forecast
+7. User clicks **Register now** → `/events/1/register`
+8. `Registration` validates the reactive form, then `POST /api/registrations`
+9. API validates, checks status, checks remaining capacity, inserts, returns **201**
+10. Client swaps the form for a confirmation receipt
 
 ---
 
-## 4. Technical Challenges & Solutions
+## 4. Technology Stack
 
-### Challenge 1 — Preventing SQL Injection in a Dynamically Built Query
-**Problem:** Building a search string by concatenating user input is the classic injection vector; but static queries cannot express optional filters.
-**Solution:** Assemble only the *SQL fragments* conditionally, and route every *user value* through a `params` array executed by `pool.execute()`. Prepared statements separate code from data, so injection is structurally impossible.
+### Front end (both applications)
 
-### Challenge 2 — Avoiding the N+1 Query Problem
-**Problem:** Returning events *with* their category and organization invites three separate queries per event — O(N) round-trips.
-**Solution:** A single query with `INNER JOIN categories` and `LEFT JOIN organizations`. The `LEFT` join on organizations is deliberate: events without a sponsor must still appear, which an inner join would silently drop.
-
-### Challenge 3 — Passing State Between Pages Without a Framework
-**Problem:** No client-side router, no global store — yet the detail page must know *which* event to fetch.
-**Solution:** The event ID is threaded through the URL as a query string (`event.html?id=7`) and read back with `URLSearchParams`. This makes every detail view **deep-linkable, shareable, and refresh-safe** — arguably better than transient in-memory state.
-
-### Challenge 4 — Diagnosing a Cross-Tier Timezone Bug from a UI Symptom
-**Problem:** Every event rendered one day early and every countdown badge showed `NaN month(s) left` — yet there was no console error and the API response was syntactically valid JSON.
-**Solution:** Traced the value across all three tiers and found that `mysql2` was converting MySQL `DATE` into a JS `Date` at local midnight, which serialised as a UTC timestamp one day behind (`2026-10-17T16:00:00.000Z`). Fixed at the source with `dateStrings: true` in the pool configuration, plus defensive date normalisation on the client so the UI degrades gracefully instead of printing `NaN`. See [§2.5](#25-timezone-safe-date-handling-debugged-from-a-ui-symptom).
-
-### Challenge 5 — Rendering Many Cards Without Layout Thrashing
-**Problem:** Appending cards one-by-one causes repeated reflow and visible jank.
-**Solution:** Build the full HTML string in memory, then commit it in one `innerHTML` assignment; animate progress bars afterwards on the next animation frame via `requestAnimationFrame`.
-
-### Challenge 6 — Coordinating 404/400/500 Semantics Across the Stack
-**Problem:** Distinguishing "malformed request" from "not found" from "server fault" — and surfacing each correctly to the user.
-**Solution:** The API returns `400` for non-numeric IDs, `404` for missing records, and `500` for database faults, each with a JSON body. The client inspects `response.status` first and the business `success` flag second.
-
-### Challenge 7 — Foreign-Key Delete Semantics That Match Business Reality
-**Problem:** A blanket `CASCADE` would delete historical events when an organization is removed — data loss with real business impact.
-**Solution:** Deliberate per-relationship actions: `RESTRICT` to protect categories in use, `SET NULL` to preserve events when an organization departs.
-
----
-
-## 5. Technology Stack
-
-### Backend
 | Technology | Version | Role |
 |---|---|---|
-| Node.js | ≥ 18 | Runtime environment |
-| Express | ^4.18 | HTTP server, routing, middleware, static hosting |
-| mysql2 | ^3.6 | MySQL driver with Promise API and connection pooling |
-| better-sqlite3 | ^13.0 | Zero-config SQLite bootstrap for local demos |
-| cors | ^2.8 | Cross-origin middleware (defensive, for split-origin deployment) |
-| dotenv | ^16.3 | Environment-based configuration |
-| nodemon | ^3.0 | Dev-time auto-restart |
+| Angular | **22.2** | Standalone components, signals, lazy routes, zoneless CD |
+| TypeScript | **6.0** | Strict typing end-to-end, shared domain models |
+| Reactive Forms | Angular 22 | Validation with `Validators`, live value signals |
+| `HttpClient` + `withFetch` | Angular 22 | Typed services, RxJS `Observable` pipelines |
+| CSS3 | — | Two hand-built design systems (public warm, admin neutral) |
 
-### Database
-| Technology | Role |
-|---|---|
-| MySQL 8.x | Primary relational store — InnoDB, `utf8mb4`, foreign keys, ENUM, indexes |
-| SQLite | Portable single-file store used by the seed script |
+No component library, no Tailwind, no state-management library — the styling and state are written directly.
 
-### Frontend
-| Technology | Role |
-|---|---|
-| HTML5 | Semantic page structure, three pages |
-| CSS3 | Custom design system — CSS variables, Flexbox, Grid, keyframe animations, media queries |
-| Vanilla JavaScript (ES6+) | `fetch`, `async/await`, `Promise`, DOM API, `URLSearchParams`, `IntersectionObserver`, `IntersectionObserver`-based reveal animations |
+### Back end
 
-> **Notably absent:** no React/Vue/Angular, no jQuery, no CSS framework, no bundler. Every abstraction is hand-implemented.
-
-### Codebase Scale
-| Layer | Files | Lines |
+| Technology | Version | Role |
 |---|---|---|
-| Backend (JS) | 4 | ~553 |
-| Frontend (JS) | 3 | ~831 |
-| Stylesheet (CSS) | 1 | ~943 |
-| Markup (HTML) | 3 | ~442 |
-| Schema (SQL) | 1 | ~151 |
-| **Total** | **12** | **≈ 2,900** |
+| Node.js | ≥ 24.15 | Runtime (required by Angular 22 tooling) |
+| Express | 4.x | Routing, middleware, JSON handling |
+| mysql2 | 3.x | Promise API, connection pool, `dateStrings` |
+| cors | 2.x | Cross-origin access for the two dev servers |
+| better-sqlite3 | 13.x | Zero-config SQLite bootstrap for local demos |
+
+### Data & external services
+
+| Technology | Role |
+|---|---|
+| MySQL 8.x | InnoDB, `utf8mb4`, foreign keys with intentional actions, `ENUM`, `CHECK`, `UNIQUE`, indexes |
+| Open-Meteo | Public forecast API, consumed server-side only |
 
 ---
 
-## 6. System Architecture
+## 5. Database Design
+
+Four tables in **third normal form**, with `events` as the central fact table and `registrations` as the transactional detail table added in Assessment 3.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                          BROWSER (Client)                        │
-│   index.html      search.html      event.html                    │
-│   home.js         search.js        event.js                      │
-│        │              │                │                         │
-│        └──────────────┴────────────────┘                         │
-│                       │  fetch() + async/await                   │
-└───────────────────────┼──────────────────────────────────────────┘
-                        │  HTTP / JSON
-┌───────────────────────▼──────────────────────────────────────────┐
-│                    EXPRESS SERVER  (api/server.js)               │
-│   cors() · express.json() · express.static('../client')          │
-│                       │                                          │
-│              ┌────────▼─────────┐                                │
-│              │  routes/events.js │  4 REST endpoints             │
-│              └────────┬─────────┘                                │
-└───────────────────────┼──────────────────────────────────────────┘
-                        │  pool.execute(sql, params)
-┌───────────────────────▼──────────────────────────────────────────┐
-│                 MYSQL  ·  charityevents_db                       │
-│      organizations ──┐                                           │
-│                      ├── events ──> categories                   │
-│      (foreign keys, ENUM status, indexes)                        │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-**Request lifecycle (search example):**
-1. User submits the filter form → `searchEvents()` intercepts with `preventDefault()`
-2. `URLSearchParams` builds the query string from only the populated fields
-3. `fetch()` issues `GET /api/events/search?...`
-4. Express routes to `router.get('/search')` → dynamic SQL + bound params
-5. MySQL executes the prepared statement against indexed columns
-6. JSON `{ success, count, filters, data }` returns to the browser
-7. `map(renderEventCard).join()` builds the HTML; one `innerHTML` write renders all cards
-8. `requestAnimationFrame` animates the progress bars; `IntersectionObserver` reveals cards on scroll
-
----
-
-## 7. Database Design
-
-Three normalized tables in **Third Normal Form**, with `events` as the central fact table.
-
-```
-┌────────────────────┐          ┌─────────────────────┐
-│   organizations    │          │     categories      │
-├────────────────────┤          ├─────────────────────┤
-│ org_id        PK   │          │ category_id    PK   │
-│ org_name           │          │ category_name       │
-│ mission_statement  │          │ category_description│
-│ description        │          │ icon_class          │
-│ contact_email      │          └──────────┬──────────┘
-│ contact_phone      │                     │
-│ website_url        │                     │
-│ logo_url           │                     │
-│ created_at         │                     │
-└─────────┬──────────┘                     │
-          │                                │
-          │  ON DELETE SET NULL            │  ON DELETE RESTRICT
-          │                                │
-     ┌────▼────────────────────────────────▼─────┐
-     │                  events                    │
-     ├────────────────────────────────────────────┤
-     │ event_id          PK                       │
-     │ event_name · short_description             │
-     │ full_description                           │
-     │ category_id       FK → categories          │
-     │ org_id            FK → organizations       │
-     │ event_date · event_time                    │
-     │ location · address · image_url             │
+┌────────────────────┐        ┌─────────────────────┐
+│   organizations    │        │     categories      │
+├────────────────────┤        ├─────────────────────┤
+│ org_id        PK   │        │ category_id    PK   │
+│ org_name           │        │ category_name       │
+│ mission_statement  │        │ category_description│
+│ description        │        │ icon_class          │
+│ contact_*          │        └──────────┬──────────┘
+│ website_url        │                   │
+└─────────┬──────────┘                   │ ON DELETE RESTRICT
+          │ ON DELETE SET NULL           │
+          │                              │
+     ┌────▼──────────────────────────────▼──────┐
+     │                 events                    │
+     ├───────────────────────────────────────────┤
+     │ event_id            PK                    │
+     │ event_name · short_description            │
+     │ full_description                          │
+     │ category_id         FK → categories       │
+     │ org_id              FK → organizations    │
+     │ event_date · event_time                   │
+     │ location · address                        │
+     │ latitude · longitude    ← weather         │
+     │ image_url                                 │
      │ ticket_price · goal_amount · current_amount│
-     │ status  ENUM(upcoming|active|past|suspended)│
+     │ status ENUM(upcoming|active|past|suspended)│
      │ max_participants · organizer_contact       │
      │ created_at · updated_at                    │
-     │                                            │
      │ INDEX (status) (event_date) (category_id)  │
+     └───────────────────┬───────────────────────┘
+                         │ ON DELETE RESTRICT
+     ┌───────────────────▼───────────────────────┐
+     │              registrations                 │
+     ├────────────────────────────────────────────┤
+     │ registration_id      PK                    │
+     │ event_id             FK → events           │
+     │ attendee_name                              │
+     │ attendee_email                             │
+     │ attendee_phone                             │
+     │ tickets_purchased    CHECK > 0             │
+     │ registration_date    DEFAULT CURRENT_TIMESTAMP │
+     │ special_requests                           │
+     │ UNIQUE (event_id, attendee_email)  ← 1 per event │
+     │ INDEX (event_id) (registration_date)       │
      └────────────────────────────────────────────┘
 ```
 
@@ -330,231 +272,355 @@ Three normalized tables in **Third Normal Form**, with `events` as the central f
 
 | Decision | Justification |
 |---|---|
-| 3NF normalization | Eliminates update anomalies — an organization's contact details live in exactly one row |
-| `ENUM` for `status` | Enforces the lifecycle vocabulary at the database level; invalid states are unrepresentable |
-| `DECIMAL(12,2)` for money | Exact decimal arithmetic — floating point would introduce rounding errors in financial totals |
-| Indexes on `status`, `event_date`, `category_id` | These are precisely the columns used by the `WHERE` filters and `ORDER BY` sort |
-| `updated_at ... ON UPDATE CURRENT_TIMESTAMP` | Audit trail with no application-level bookkeeping |
-| `utf8mb4` charset | Full Unicode including emoji and CJK text |
-| Separate `organizations` table | Prevents duplicated sponsor data across many events (a 3NF violation) |
+| 3NF normalisation | An organisation's contact details exist in exactly one row — no update anomalies |
+| `ENUM` for `status` | The lifecycle vocabulary is enforced by the database; invalid states are unrepresentable |
+| `DECIMAL(12,2)` for money | Exact decimal arithmetic; floating point would corrupt fundraising totals |
+| `UNIQUE (event_id, attendee_email)` | Implements "one registration per person per event" as a hard guarantee, not a hope |
+| `CHECK (tickets_purchased > 0)` | Rejects nonsensical quantities beneath the API layer |
+| `ON DELETE RESTRICT` on registrations | Protects attendee records; makes the 409 rule structural |
+| Indexes on `status`, `event_date`, `category_id` | Exactly the columns used by the filters and sort order |
+| `latitude` / `longitude` | Required by Open-Meteo to produce a venue forecast |
 
-**Seed dataset:** 10 events across 8 categories and 4 organizations — including one `past` and one `suspended` event, deliberately seeded to prove the visibility filter works.
+**Seed dataset:** 4 organisations · 8 categories · 10 events · **13 registrations** across 6 events. Events 5, 7, 9 and 10 intentionally have **no** registrations so the admin delete flow can be demonstrated both as blocked (409) and as successful.
+
+The entire schema **and** data live in a single importable file: `database/charityevents_db.sql`.
 
 ---
 
-## 8. API Reference
+## 6. API Reference
 
-Base URL: `http://localhost:3000`
+Base URL: `http://localhost:3000/api`
 
-| # | Method | Endpoint | Purpose | Feeds |
-|---|---|---|---|---|
-| 1 | `GET` | `/api` | Service discovery / health check | — |
-| 2 | `GET` | `/api/events` | Ongoing + upcoming events with category & organization | Home page |
-| 3 | `GET` | `/api/events/search` | Multi-criteria filtered search | Search page |
-| 4 | `GET` | `/api/events/categories/list` | All categories with per-category event counts | Search dropdown |
-| 5 | `GET` | `/api/events/:id` | Full detail for one event + computed progress % | Detail page |
+### Events
 
-### `GET /api/events`
-Returns every `upcoming` or `active` event, ordered chronologically.
-```json
-{ "success": true, "count": 8,
-  "data": [ { "event_id": 3, "event_name": "Treasures Charity Auction",
-              "category_name": "Charity Auction", "org_name": "Love Foundation",
-              "event_date": "2026-10-28", "status": "upcoming" } ] }
-```
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api` | Service discovery / endpoint index |
+| `GET` | `/api/health` | Database health probe |
+| `GET` | `/api/events` | Upcoming + active events (public home) |
+| `GET` | `/api/events/search` | Combinable filtering (public search) |
+| `GET` | `/api/events/categories/list` | Categories with live event counts |
+| `GET` | `/api/events/admin/all` | **Every** event, all statuses, with registration counts |
+| `GET` | `/api/events/:id` | Full detail **including its registration list** |
+| `POST` | `/api/events` | Create an event |
+| `PUT` | `/api/events/:id` | Update an event (full or partial payload) |
+| `DELETE` | `/api/events/:id` | Delete — **409 if registrations exist** |
 
-### `GET /api/events/search`
-| Query param | Type | Behaviour |
+> Route order matters: `/admin/all` is declared before `/:id`, otherwise Express would match `admin` as an event id.
+
+### Registrations
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/registrations?eventId=3` | List registrations, optionally scoped to one event |
+| `POST` | `/api/registrations` | Create a registration (ticket purchase) |
+
+### Organisations & weather
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/organizations` | Organisations for the admin dropdown |
+| `GET` | `/api/weather?lat=&lon=&timezone=` | Translated Open-Meteo forecast |
+| `GET` | `/api/weather/codes` | WMO code → description/icon legend |
+
+### Search parameters
+
+| Param | Type | Behaviour |
 |---|---|---|
 | `date` | `YYYY-MM-DD` | Exact date match |
 | `location` | string | **Fuzzy** — `LIKE %…%` against both `location` and `address` |
-| `category` | int | Exact category ID match |
-| `freeOnly` | `1` | Only events where `ticket_price = 0` or `NULL` |
+| `category` | int | Exact category id |
+| `freeOnly` | `1` | Only `ticket_price = 0` or `NULL` |
 
-All parameters are **optional and freely combinable**; omitted filters are simply not added to the `WHERE` clause.
+All optional and freely combinable.
 
-```
-GET /api/events/search?location=Guangzhou&freeOnly=1
-```
+### Status codes
 
-### `GET /api/events/:id`
-Returns the event plus joined category/organization data and a **server-computed** `progress_percentage`.
-- `400` — id is not numeric
-- `404` — no such event
+| Code | Meaning |
+|---|---|
+| `200` | Success |
+| `201` | Resource created |
+| `400` | Validation failure (with an `errors[]` array) |
+| `404` | Unknown event |
+| `409` | Business rule conflict — duplicate registration, full capacity, or event has registrations |
+| `500` | Unexpected server fault |
+| `502` / `504` | Upstream weather service failure / timeout |
 
-### Error contract
-Every failure returns a consistent envelope:
+### Response envelope
+
 ```json
-{ "success": false, "message": "Event not found" }
+{ "success": true, "count": 3, "data": [ ... ] }
+{ "success": false, "message": "Validation failed", "errors": ["Email is required"] }
 ```
 
 ---
 
-## 9. Project Structure
+## 7. Frontend Architecture (Angular 22)
+
+Both applications follow the same shape:
 
 ```
-城市慈善活动管理动态网站/
-├── api/                          # Backend — Express RESTful API
-│   ├── server.js                 # Entry point: middleware, routing, static hosting
-│   ├── event_db.js               # MySQL connection pool + health check
-│   ├── db_init.js                # SQLite bootstrap: schema + transactional seeding
-│   ├── routes/
-│   │   └── events.js             # 4 REST endpoints, dynamic SQL builder
-│   ├── package.json
-│   └── package-lock.json
-│
-├── client/                       # Frontend — framework-free
-│   ├── index.html                # Home: hero, about, dynamic event grid
-│   ├── search.html               # Search: multi-criteria filter form + results
-│   ├── event.html                # Detail: full info, progress, register modal
-│   ├── css/
-│   │   └── style.css             # Design system: variables, Grid, Flexbox, animations
-│   ├── js/
-│   │   ├── home.js               # Fetch lifecycle + card renderer + hero stats
-│   │   ├── search.js             # Query builder, highlighting, clear filters
-│   │   └── event.js              # URL param parsing + detail renderer
-│   └── images/
-│
-├── database/
-│   └── charityevents_db.sql      # MySQL schema + seed data (import this)
-│
-├── docs/
-│   └── screenshots/              # Demo screenshots referenced in §11
-├── package.json
-└── README.md
+src/app/
+├── app.ts / app.html            # shell: navbar + router-outlet + footer
+├── app.config.ts                # providers: router, HttpClient, scrolling
+├── app.routes.ts                # lazy loadComponent per screen
+├── core/
+│   ├── config/api.config.ts     # single API base
+│   ├── models/*.ts              # typed contract with the API
+│   └── services/*.ts            # HTTP + error normalisation
+├── shared/                      # reusable presentation
+└── pages/                       # one folder per screen
 ```
+
+**Angular 22 features used deliberately**
+
+| Feature | Where it matters |
+|---|---|
+| **Signals** (`signal`, `computed`, `input`) | Every component holds state as signals, so zoneless change detection works without `markForCheck` |
+| **Standalone components** | No `NgModule` anywhere; each component declares exactly what it imports |
+| **Lazy `loadComponent`** | Only the shell + current screen are downloaded |
+| **`withComponentInputBinding()`** | `/events/:id` binds straight into `readonly id = input.required<string>()` |
+| **Reactive Forms** | Validation on registration and admin create/edit, with live value signals |
+| **Typed HTTP services** | Components never touch `HttpClient` directly; they receive `Observable<CharityEvent>` |
+| **`takeUntilDestroyed`** | Weather subscriptions cannot outlive their component |
+
+**Error handling** is centralised in one function per app, `extractApiError()`, which prefers field-level `errors[]`, then `message`, and falls back to a network-specific hint when `status === 0`.
+
+**Public routes**
+
+| Route | Screen |
+|---|---|
+| `/` | Home — hero, about, live event grid |
+| `/search` | Search — four combinable filters |
+| `/events/:id` | Detail — record, organiser, progress, **registrations**, weather |
+| `/events/:id/register` | Registration — validated form + confirmation |
+
+**Admin routes**
+
+| Route | Screen |
+|---|---|
+| `/` | Event list — stats, search, status filter, edit/delete |
+| `/events/new` | Create form |
+| `/events/:id/edit` | Edit form + that event's registrations |
 
 ---
 
-## 10. Getting Started
+## 8. Weather Integration
+
+```
+Angular WeatherWidget
+        │  GET /api/weather?lat=39.9087&lon=116.4576&timezone=Asia/Shanghai
+        ▼
+Express /api/weather
+        │  · validates lat/lon ranges
+        │  · 10-minute in-memory cache
+        │  · 8-second AbortController timeout
+        │  · translates WMO codes → description + icon + group
+        ▼
+https://api.open-meteo.com/v1/forecast
+        ?latitude=…&longitude=…
+        &daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max
+        &forecast_days=7&timezone=…
+```
+
+**Why proxy rather than call the API from the browser?**
+
+1. **No third-party CORS dependency** — our origin is the only one that matters.
+2. **One translation table** — both applications render identical wording for code `95`.
+3. **Caching** — ten page views do not become ten upstream requests.
+4. **Timeout control** — a slow third party cannot hang the UI indefinitely.
+5. **Swap-friendly** — replacing Open-Meteo changes one file, not every component.
+
+The widget degrades gracefully: no coordinates → neutral notice; upstream failure → the error text; during load → a placeholder. It never renders a broken box.
+
+---
+
+## 9. Engineering Challenges & Solutions
+
+### Challenge 1 — Enforcing “one registration per person per event”
+
+**Problem:** A read-then-insert check races under concurrent submissions; two requests can both see "not registered" and both insert.
+**Solution:** A `UNIQUE (event_id, attendee_email)` constraint makes the guarantee structural. The API still pre-checks for a friendly message, but the database is the authority, and `ER_DUP_ENTRY` is translated into HTTP **409**.
+
+### Challenge 2 — Deleting an event without destroying attendee history
+
+**Problem:** The natural `ON DELETE CASCADE` would silently erase registrations.
+**Solution:** `ON DELETE RESTRICT` plus an explicit pre-flight `COUNT(*)`. The API returns **409** with `registration_count` and `tickets_sold`, which the admin UI renders verbatim: *"This event cannot be deleted because it already has registrations. (3 registration(s), 7 ticket(s))"*.
+
+### Challenge 3 — Keeping event visibility a data concern
+
+**Problem:** Which events appear publicly could easily scatter across queries.
+**Solution:** Every public query carries `WHERE status IN ('upcoming','active')`. The admin endpoint deliberately omits it. Suspending an event is a single `UPDATE`, and the event disappears from both the home page and search simultaneously.
+
+### Challenge 4 — Diagnosing a cross-tier timezone bug
+
+**Problem:** Every event rendered one day early and countdowns read `NaN month(s) left`, with no console error and a syntactically valid API response.
+**Solution:** Traced the value through all three tiers — `mysql2` was converting `DATE` into a JS `Date` at local midnight, which serialised as a UTC instant one day behind. Fixed at the source (`dateStrings: true`) and defended on the client (slice to 10 characters, guard `isNaN`).
+
+### Challenge 5 — Two SPAs, one API, no CORS surprises
+
+**Problem:** Three services on three ports invite CORS failures and hard-coded hostnames.
+**Solution:** Each Angular project ships a `proxy.conf.json` mapping `/api` → `:3000`, so application code uses the relative base `/api` and knows no hostnames. The API enables `cors()` as a belt-and-braces measure for split-origin deployment.
+
+### Challenge 6 — Zoneless change detection with reactive forms
+
+**Problem:** Angular 22 does not use zones; state written to plain fields would never re-render.
+**Solution:** All mutable state is a signal, and derived values (totals, filtered rows, stats) are `computed()`. Form values that drive the UI are bridged with `toSignal(form.valueChanges)`, so the live "Total due" updates as the ticket count changes.
+
+### Challenge 7 — N+1 queries on the detail page
+
+**Problem:** An event plus its registrations, category and organisation invites four queries per request.
+**Solution:** One `JOIN`ed event query plus one registration query — a constant two round-trips, with aggregates (`tickets_sold`, `tickets_remaining`, `progress_percentage`) computed once on the server so both front ends display identical numbers.
+
+---
+
+## 10. Demo Screenshots
+
+All images are live captures of the running system against the MySQL database.
+
+### Public website
+
+| Home — hero and live statistics | Home — dynamic event grid |
+|---|---|
+| ![Home page hero with live statistics](docs/screenshots/a3/a3-01-home.png) | ![Event cards with badges, countdowns and progress bars](docs/screenshots/a3/a3-02-home-events.png) |
+
+The hero figures are computed from the API response, not hard-coded. Each card carries a status badge, a live countdown and a fundraising progress bar.
+
+| Search — filtered results with highlighting | Event detail — registrations, progress, weather |
+|---|---|
+| ![Search results with the matched location highlighted](docs/screenshots/a3/a3-03-search.png) | ![Event detail page with registration table and weather widget](docs/screenshots/a3/a3-04-detail.png) |
+
+![Registration confirmed](docs/screenshots/a3/a3-05-register-success.png)
+
+### Admin console
+
+| Event list with registration counts | Delete blocked by the integrity rule |
+|---|---|
+| ![Admin event list with statistics and statuses](docs/screenshots/a3/a3-06-admin-list.png) | ![Delete refused because the event has registrations](docs/screenshots/a3/a3-07-admin-delete-blocked.png) |
+
+---
+
+## 11. Getting Started
 
 ### Prerequisites
-- Node.js ≥ 18
-- MySQL 8.x running locally
 
-### 1 · Create the database
+- **Node.js ≥ 24.15** (required by the Angular 22 toolchain)
+- **MySQL 8.x** running locally
+- npm 11+
+
+### 1 · Create and seed the database
+
 ```bash
 mysql -u root -p < database/charityevents_db.sql
 ```
-This creates `charityevents_db`, the three tables, and seeds 10 events / 8 categories / 4 organizations.
 
-### 2 · Configure the connection
-Edit `api/event_db.js` to match your local credentials:
-```js
-const pool = mysql.createPool({
-  host: 'localhost', port: 3306,
-  user: 'root', password: '',
-  database: 'charityevents_db', charset: 'utf8mb4',
-  connectionLimit: 10
-});
-```
+This creates `charityevents_db` with all four tables and seeds 10 events / 13 registrations. The file is BOM-free and safe to re-run — it drops and recreates the schema.
 
-### 3 · Install & run
+### 2 · Start the API
+
 ```bash
 cd api
 npm install
 node server.js
 ```
-Expected startup output:
+
+Expected output:
+
 ```
 MySQL database connected successfully!
   Events: 10 | Categories: 8
-  Server:     http://localhost:3000
-  Website:    http://localhost:3000/
-  API:        http://localhost:3000/api
+  API:       http://localhost:3000/api
 ```
 
-### 4 · Open the site
-| Page | URL |
-|---|---|
-| Home | http://localhost:3000/ |
-| Search | http://localhost:3000/search.html |
-| Detail | http://localhost:3000/event.html?id=1 |
-| API root | http://localhost:3000/api |
+### 3 · Start the public website
 
-### Optional — MySQL-free demo
+```bash
+cd clientside
+npm install
+npm start          # ng serve → http://localhost:4200
+```
+
+### 4 · Start the admin console
+
+```bash
+cd adminside
+npm install
+npm start          # ng serve → http://localhost:4300
+```
+
+| Service | URL |
+|---|---|
+| Public website | http://localhost:4200 |
+| Admin console | http://localhost:4300 |
+| API | http://localhost:3000/api |
+
+### Optional — without MySQL
+
 ```bash
 cd api && node db_init.js   # builds a standalone SQLite database
 ```
 
 ---
 
-## 11. Demo Screenshots
+## 12. Deployment & Submission Packaging
 
-Every image below is a live capture of the running application against the MySQL `charityevents_db` database.
+### Three archives, as required
 
-### 11.1 Home page
-
-| Hero section & live statistics | Dynamic event grid |
+| Archive | Contents |
 |---|---|
-| ![Home page hero with live statistics](docs/screenshots/01a-home-page-hero.png) | ![Event cards with status badges, countdowns and progress bars](docs/screenshots/01b-home-page-events.png) |
+| `usernameA3-clientside.zip` | the whole `clientside/` project (source, `package.json`, `proxy.conf.json`, `angular.json`) |
+| `usernameA3-adminside.zip` | the whole `adminside/` project |
+| `usernameA3-api.zip` | `api/` source **plus** `database/charityevents_db.sql` |
 
-The hero figures (`8+ Charity Events`, `4 Organizations`, `$106K+ Funds Raised`) are **computed from the API response**, not hard-coded. Each card carries a status badge, a live countdown, and a fundraising progress bar, and the grid is populated entirely by `GET /api/events`.
+**Exclude before zipping:** `node_modules/`, `dist/`, `.angular/`, `*.log`. Markers run `npm install` themselves.
 
-![About Us section](docs/screenshots/01c-home-page-about.png)
+### Building for production
 
-The static About Us section, rendered from hard-coded HTML.
+```bash
+cd clientside && npm run build     # → dist/clientside/browser
+cd adminside  && npm run build     # → dist/adminside/browser
+```
 
-### 11.2 Search page — multi-criteria filtering
+### Deploying to SCU cPanel
 
-| Filter form | Results with keyword highlighting |
-|---|---|
-| ![Search form with date, location, category and free-only controls](docs/screenshots/02-search-filters.png) | ![Search results with the matched location keyword highlighted](docs/screenshots/03-search-results.png) |
+1. Upload the API, then run `npm install --omit=dev` and start it via the cPanel Node.js application manager (or `Passenger`).
+2. Import `charityevents_db.sql` through phpMyAdmin.
+3. Update `api/event_db.js` with the cPanel MySQL credentials.
+4. Upload each `dist/*/browser` folder to its own document root.
+5. Edit `clientside/src/app/core/config/api.config.ts` and `adminside/src/app/core/config/api.config.ts` so `API_BASE` points at the deployed API, then rebuild — or deploy the API on the same domain and keep the relative `/api`.
 
-![Empty state when no event matches the criteria](docs/screenshots/04-search-empty-state.png)
-
-Four independent filter controls (date, location, category, free-only) combine freely; the result header reports the count and echoes the applied filters. Matched location text is highlighted in-place via `<mark>`.
-
-### 11.3 Event detail page
-
-| Full event record | Register modal |
-|---|---|
-| ![Event detail page with description, info cards and fundraising progress](docs/screenshots/05-event-detail.png) | ![Under-construction modal dialog](docs/screenshots/06-register-modal.png) |
-
-### 11.4 Backend
-
-| API response (Postman) | Database schema |
-|---|---|
-| ![Combined search request returning JSON in Postman](docs/screenshots/07-postman-search.png) | ![MySQL schema definition with foreign keys and ENUM](docs/screenshots/08-database-schema.png) |
-
-> **Screenshot conventions:** files live in `docs/screenshots/`, filenames are lower-case and hyphenated (never spaced, since spaces break Markdown image paths), and home-page views are suffixed `01a` / `01b` / `01c` so the reading order matches the page scroll order.
+> Each student must deploy to their **own** cPanel account.
 
 ---
 
-## 12. Engineering Skills Demonstrated
+## 13. Skills Demonstrated & AI/ML Extensibility
 
-This project maps directly onto competencies expected in **Software Engineering** and **AI/ML** graduate study:
-
-| Competency | Evidence in this project |
+| Competency | Evidence |
 |---|---|
-| Relational data modelling | 3NF schema, primary/foreign keys, referential actions, ENUM domains, indexing |
-| SQL proficiency | Multi-table `JOIN`s, aggregate `COUNT` with `LEFT JOIN`, dynamic `WHERE` construction, `ORDER BY` |
-| Backend / API engineering | Express middleware pipeline, RESTful resource design, correct HTTP status semantics, uniform response contracts |
-| Security awareness | Prepared statements (SQL-injection prevention), parameter validation, error-message hygiene |
-| Asynchronous programming | `async/await`, `Promise` chains, `fetch`, non-blocking I/O |
-| Frontend / DOM engineering | Framework-free rendering, single-write DOM updates, `IntersectionObserver`, responsive CSS, animations |
-| Software architecture | Layered separation (presentation / routing / persistence), single-origin deployment, configuration externalization |
-| Data pipeline thinking | Data flows from normalized storage → SQL transformation → JSON serialization → DOM rendering, with validation at each boundary |
-| Debugging & correctness | Timezone off-by-one diagnosis, N+1 elimination, empty/error-state coverage |
+| Relational modelling | 4 tables in 3NF, `UNIQUE`, `CHECK`, `ENUM`, intentional FK actions, indexing |
+| SQL | Multi-table `JOIN`s, correlated `COUNT` subqueries, dynamic `WHERE`, `GROUP BY` aggregates |
+| API engineering | Full C.R.U.D., correct HTTP semantics (200/201/400/404/409), uniform envelopes |
+| Security | Prepared statements, parameter validation, constraint-backed uniqueness, no secret leakage in errors |
+| TypeScript | Strict domain models shared across services and templates; no `any` in application code |
+| Angular architecture | Standalone components, signals, zoneless CD, lazy routes, typed services, reactive forms |
+| Reactive programming | RxJS `Observable` pipelines, `takeUntilDestroyed`, `toSignal` bridges |
+| Architecture | Three independently deployable apps on one contract; server-side third-party integration |
+| Correctness | Cross-tier timezone bug diagnosed and fixed; capacity and uniqueness enforced structurally |
 
-The **data pipeline thinking** in the final row is the most portable skill: the ability to trace and validate a record's journey from storage, through transformation, to consumer is precisely the discipline required to build, serve, and monitor machine-learning pipelines.
+### Toward AI/ML
 
----
+The system already exposes the interfaces an intelligent layer would need:
 
-## 13. Future Work — Extensibility toward AI/ML
-
-The current system is a complete, conventional dynamic website. Its architecture, however, is a deliberate **foundation for AI/ML extension**, because every layer already exposes exactly the interfaces an intelligent feature would need.
-
-| Direction | How the existing architecture enables it |
+| Direction | Existing foundation |
 |---|---|
-| **Semantic search** | The `full_description` TEXT column is already a natural corpus for embeddings; replace the `LIKE` filter with vector similarity while keeping the same API contract |
-| **Recommendation engine** | `events`, `categories`, and `organizations` provide the entities; adding a `registrations` table yields the user–item interaction matrix that collaborative filtering requires |
-| **Predictive fundraising** | `goal_amount` / `current_amount` time series across events is already structured data — a natural fit for regression or time-series forecasting |
-| **NLP query parsing** | Natural-language queries ("free concerts in Guangzhou next month") could be parsed into the existing `{date, location, category, freeOnly}` parameter set — the API already accepts exactly that structured form |
-| **Automated content moderation** | Policy-violating events are currently flagged manually via `status = 'suspended'`; text/image classifiers could automate that decision and write to the same column |
-| **Event image understanding** | `image_url` fields across events form a ready image dataset for classification or auto-tagging |
+| **Recommendation** | `events`, `categories`, `organizations`, `registrations` form a ready user–item interaction matrix |
+| **Demand forecasting** | `(event_date, target_capacity, tickets_sold)` is structured time-series data |
+| **Semantic search** | `full_description` is a natural embedding corpus; swap the `LIKE` clause for vector similarity behind the same endpoint |
+| **Natural-language search** | An LLM can already emit exactly the `{date, location, category, freeOnly}` object the endpoint accepts |
+| **Content moderation** | `status = 'suspended'` is the manual hook a classifier would write to |
+| **Anomaly detection** | Registration velocity per event is a simple, meaningful signal |
 
-**The key architectural insight:** the API layer is already the correct place to inject intelligence. A model-backed service can sit behind `/api/events/search` or a new `/api/recommendations` endpoint without changing a single line of frontend code — because the frontend depends only on the **JSON contract**, not on how the answer was produced. That clean separation is what makes this project a credible base for AI-augmented development.
+The key architectural property: **the front ends depend only on the JSON contract**. A model-backed service can replace or extend `/api/events/search`, or add `/api/recommendations`, without changing a single Angular component.
 
 ---
 ---
@@ -565,289 +631,229 @@ The current system is a complete, conventional dynamic website. Its architecture
 
 ## 1. 项目概述
 
-**城市慈善活动管理动态网站** 是一个三层架构的动态 Web 应用，连接慈善组织与公众用户。市民可以通过数据驱动的界面浏览、筛选和查看各类慈善活动 —— 包括慈善晚宴、趣味跑、拍卖会、音乐会、志愿服务等。整个系统由关系型数据库与 RESTful API 支撑。
+**城市慈善活动平台** 连接慈善组织与公众，同时为工作人员提供后台管理能力。系统由**三个可独立部署的应用**组成，共享同一套 REST API 与关系型数据库：
 
-本项目**刻意不使用任何前端框架**。每一次请求、响应、状态流转与 DOM 更新都用原生 JavaScript 显式编写。这是一个经过深思的工程决策：它迫使开发者完全掌控 HTTP 生命周期与 DOM，展现对 Web 运行原理的第一性理解 —— 而这种基础能力可以直接迁移到后端、数据工程以及 ML 服务化等方向。
+| 应用 | 技术栈 | 开发端口 | 职责 |
+|---|---|---|---|
+| **`clientside/`** 公众网站 | Angular 22 + TypeScript | 4200 | 浏览、搜索、查看详情、活动报名 |
+| **`adminside/`** 管理后台 | Angular 22 + TypeScript | 4300 | 活动完整增删改查、报名数据查看 |
+| **`api/`** REST 服务 | Node.js + Express + MySQL | 3000 | 数据访问、业务规则、天气代理 |
 
-**已实现的核心能力：**
+**已实现能力**
 
-| 能力 | 说明 |
+| 模块 | 能力 |
 |---|---|
-| 动态首页 | 由 API 实时数据渲染的进行中/即将举行活动列表 |
-| 多条件搜索 | **日期**、**地点**（模糊匹配）、**类别** 可自由组合筛选，并支持"仅免费活动"开关 |
-| 活动详情页 | 完整描述、票务信息、主办方档案、实时筹款进度 |
-| 内容生命周期 | `past` / `suspended` 状态的活动自动从公开列表中隐藏 |
-| 优雅状态处理 | 所有依赖数据的视图均具备加载中、空结果、错误三种状态 |
-| 响应式界面 | 移动端导航、流式网格布局、滚动渐显动画 |
+| 首页 | 实时活动网格、状态徽章、倒计时、筹款进度 |
+| 搜索 | 日期、地点（模糊）、类别、仅免费 四条件自由组合 |
+| 活动详情 | 完整信息、主办方档案、筹款进度、**报名列表** |
+| 活动报名 | 独立页面、表单校验、报名确认、名额限制 |
+| 后台列表 | 全状态活动列表，含报名数与票数统计 |
+| 后台新建 / 编辑 | 带校验的表单；编辑页同时展示该活动的报名数据 |
+| 后台删除 | 存在报名时以 HTTP **409** 拒绝（数据完整性规则） |
+| 天气 | 基于活动经纬度的 Open-Meteo 实时预报 |
 
 ---
 
 ## 2. 创新点
 
-### 2.1 状态驱动的内容生命周期（业务逻辑下沉到数据层）
+### 2.1 一个契约，两个独立的 Angular 应用
 
-本平台不通过硬编码决定展示哪些活动，而是把业务规则直接编码进数据模型。`events.status` 字段类型为 `ENUM('upcoming','active','past','suspended')`，所有公开列表查询统一强制 `WHERE status IN ('upcoming','active')`。
+公众网站与管理后台是**两个独立的 Angular 工程**，各自拥有独立的打包产物、设计系统和部署目标，只共享 REST 契约与 TypeScript 领域模型。
 
-这意味着**活动可见性是数据库中的唯一事实来源**，而不是散落在应用代码各处。一个被暂停的活动会同时从首页和搜索结果中消失，无需改动任何代码 —— 生命周期是数据，而不是逻辑。
+其价值是实质性的：管理端不会打包任何公众站代码，公众站也完全不含"删除""更新"的概念。这条边界由**构建拓扑**保证，而不是靠条件渲染来"藏起来"。
 
-### 2.2 可组合且防注入的动态查询构建器
+### 2.2 业务规则在三层同时落实
 
-搜索接口是本项目的技术核心。它没有为四种筛选条件写四条独立查询，而是**在运行时按条件拼装单条 SQL**，同时把所有用户输入保存在绑定参数数组中：
+以"有报名的活动不可删除"为例：
+
+| 层次 | 落实方式 |
+|---|---|
+| 数据库 | `registrations.event_id` 外键使用 `ON DELETE RESTRICT` |
+| API | 删除前显式 `COUNT(*)` 检查，返回 HTTP **409** 及具体数量 |
+| 界面 | 确认弹窗预先提示，并原样呈现服务端的拒绝原因 |
+
+即使绕过 API 检查，MySQL 仍会拒绝；即使绕过界面，API 仍会拒绝。**任何一层都不被单独信任。**
+
+### 2.3 体现业务语义的外键引用动作
+
+| 关系 | 动作 | 理由 |
+|---|---|---|
+| `events.category_id → categories` | `RESTRICT` | 仍在使用的类别不可消失 |
+| `events.org_id → organizations` | `SET NULL` | 组织可退出，其活动保留为未归属 |
+| `registrations.event_id → events` | `RESTRICT` | 报名者记录绝不能被静默销毁 |
+
+### 2.4 唯一性与名额作为数据库级保证
+
+"同一人同一活动只能报名一次"由 `UNIQUE (event_id, attendee_email)` 保证，而不是"先查后写"这种并发下会失效的逻辑。API 捕获 `ER_DUP_ENTRY` 并转换为可读的 **409**。`CHECK (tickets_purchased > 0)` 则在绕过 API 时仍能拒绝荒谬的票数。
+
+### 2.5 防注入的可组合查询构建器
+
+搜索接口在运行时拼装单条 SQL，而所有用户输入统一进入绑定参数数组：
 
 ```js
-// api/routes/events.js — 91–118 行
-const params = [];
-
-if (date)     { sql += ' AND e.event_date = ?';       params.push(date); }
+if (date)     { sql += ' AND e.event_date = ?';            params.push(date); }
 if (location) { sql += ' AND (e.location LIKE ? OR e.address LIKE ?)';
                 params.push(`%${location}%`, `%${location}%`); }
-if (category) { sql += ' AND c.category_id = ?';      params.push(parseInt(category)); }
-if (freeOnly === '1') { sql += ' AND (e.ticket_price = 0 OR e.ticket_price IS NULL)'; }
+if (category) { sql += ' AND c.category_id = ?';           params.push(parseInt(category, 10)); }
 
-const [rows] = await pool.execute(sql, params);   // 预编译 —— 防 SQL 注入
+const [rows] = await pool.execute(sql, params);   // 预编译语句
 ```
 
-该设计同时达成三件事：**任意条件组合**（1 到 4 个条件）而无需穷举查询变体、通过**预编译语句**在结构上杜绝 SQL 注入、为前端提供**统一的返回结构**。
+1 到 4 个条件的任意组合都能正确工作，无需穷举查询变体，也不存在字符串拼接用户输入。
 
-### 2.3 同源架构（从设计上消除 CORS 问题）
+### 2.6 把天气放在自己的 API 边界之后
 
-Express 同时托管 API 与静态前端，二者同源：
+浏览器从不直接调用 Open-Meteo。`GET /api/weather` 负责代理上游、在**一处**翻译 WMO 天气代码、实施 10 分钟缓存、8 秒超时，并返回自有响应信封。因此两个前端渲染出完全一致的文案，将来更换服务商只需改一个文件。
+
+### 2.7 定位并根治的时区缺陷
+
+`mysql2` 会把 MySQL 的 `DATE` 转成本地零点的 JS `Date`，经 `JSON.stringify` 变成比本地日期少一天的 UTC 时刻（`2026-10-17T16:00:00.000Z`）。前端读取 UTC 日号，导致所有活动**提前一天**显示，倒计时输出 `NaN month(s) left`。
+
+修复分两层 —— 连接池的 `dateStrings: true`（治因）+ 客户端日期截断（治症）：
 
 ```js
-// api/server.js — 32 行
-app.use(express.static(path.join(__dirname, '..', 'client')));
+// api/event_db.js
+dateStrings: true,
+
+// clientside/src/app/shared/format.ts
+const part = String(value).substring(0, 10);
 ```
 
-由于客户端与 API 共享同源，生产环境中不可能出现跨域请求，前端也无需硬编码后端地址 —— 通过 `window.location.origin` 在运行时自动获取。这是一个以简化部署为目的的决策，同时消除了一整类 CORS 相关的故障。
+### 2.8 全信号驱动的无 Zone Angular
 
-### 2.4 无框架的渲染管线
-
-前端实现了**纯函数渲染管线**：数据对象进，HTML 字符串出，一次性写入 DOM。
-
-```js
-// client/js/home.js — 166–167 行
-const cardsHTML = result.data.map(event => renderEventCard(event)).join('');
-container.innerHTML = `<div class="events-grid">${cardsHTML}</div>`;
-```
-
-`renderEventCard()` 是仅依赖单个活动对象的纯函数 —— 便于测试、无副作用，并可在首页与搜索页复用。数组经 `map` 与 `join` 合并为**单个字符串**，再**一次性**提交到 DOM，避免了逐条插入导致的布局抖动（N 次重排问题）。
-
-### 2.5 时区安全的日期处理（从界面症状反查出根因）
-
-这是本项目中最有教学价值的一个 Bug —— 它**不是由测试发现的，而是由用户可见的异常现象发现的**。首页上每个活动的日期都提前了一天，每个倒计时徽章都显示 `NaN month(s) left`。两个症状同源，修复它需要把一个值在三层之间完整追踪一遍。
-
-**根因。** MySQL 的 `DATE` 字段被 `mysql2` 驱动返回为 JavaScript `Date` 对象。经 `res.json()` 序列化后，数据库中的 `2026-10-18` 变成了 `"2026-10-17T16:00:00.000Z"` —— 这是一个**时刻**，而不是一个日历日期。前端随后从这个字符串里取出了 **UTC** 的日号，而它比本地日期少一天：
-
-| 层次 | 值 |
-|---|---|
-| MySQL `DATE` 字段 | `2026-10-18` |
-| 经 `mysql2` → JS `Date` | 本地时间 10 月 18 日零点（UTC+8） |
-| 经 `JSON.stringify` | `2026-10-17T16:00:00.000Z` |
-| 前端 `split('-')[2]` | `17` → **渲染为 "Oct 17"** ✗ |
-
-倒计时的问题更严重：`new Date(dateStr + 'T00:00:00')` 因字符串被拼接而得到 **Invalid Date**，最终 `Math.ceil(NaN / 30)` 以 `NaN month(s) left` 的形式直接暴露给用户。
-
-**修复分两层实施 —— 纵深防御：**
-
-```js
-// api/event_db.js —— 阻止驱动凭空造出时间部分
-const pool = mysql.createPool({ /* ... */ dateStrings: true });
-```
-
-```js
-// client/js/home.js —— 两种格式都能容纳，且绝不崩溃
-const parts = String(dateStr).substring(0, 10).split('-');
-```
-
-后端现在返回纯日期 `2026-10-18`；前端统一截取前 10 个字符，即使将来真的传来完整时间戳也能正确渲染。倒计时另有 `isNaN(eventDate.getTime())` 兜底。
-
-**为什么这一点很重要：** 这个缺陷在 API 自身的输出中**不可见** —— JSON 语法完全合法，也能通过任何 `typeof` 检查。它只在渲染时才暴露。诊断它需要同时推理驱动的类型强转、时区换算与 JSON 序列化三者的交互。这类 Bug 正是区分"代码能跑"与"软件正确"的分水岭。
-
-### 2.6 多层校验策略
-
-数据完整性在**四个相互独立的层面**上校验，因此不存在单点失效：
-
-| 层面 | 机制 |
-|---|---|
-| 数据库 | `ENUM` 约束、`NOT NULL`、外键、引用动作 |
-| API — 参数 | `isNaN(eventId)` → 返回 HTTP **400** |
-| API — 存在性 | 结果集为空 → 返回 HTTP **404** 及 JSON 错误体 |
-| 客户端 | 既检查 `response.ok`，又检查业务层的 `result.success` |
-
-### 2.7 体现业务语义的外键引用动作
-
-外键不仅存在，其**删除行为本身编码了业务策略**：
-
-- `category_id → categories` 使用 `ON DELETE RESTRICT`：仍有关联活动的类别**不可删除**，保护历史记录。
-- `org_id → organizations` 使用 `ON DELETE SET NULL`：组织可以退出，但其活动**得以保留**为未归属记录，而不会随之消失。
+Angular 22 默认使用无 Zone 变更检测。因此每个页面都建立在 `signal()` / `computed()` / `input()` 之上，而不是命令式状态 —— 更新之所以发生，是因为**数据变了**，而不是因为某个 zone 碰巧触发。
 
 ---
 
-## 3. 项目优势
+## 3. 系统架构
 
-| # | 优势 | 意义 |
-|---|---|---|
-| 1 | **零框架依赖** | 无前端构建步骤、无 npm 攻击面、加载即用，并展现对核心 Web API 的掌握而非框架熟练度 |
-| 2 | **连接池** | `mysql2` 连接池（上限 10、keep-alive）复用套接字，而非每请求新建连接 —— 这是玩具项目与可承载负载的服务之间的差别 |
-| 3 | **消除 N+1 查询** | 首页、搜索、详情三个接口均通过 `JOIN` 在**一次往返**中取回反范式化数据，而非 N 次补查询 |
-| 4 | **热路径索引** | 在 `status`、`event_date`、`category_id` 上建立索引 —— 恰好是筛选与排序所触及的列 |
-| 5 | **统一的 API 契约** | 所有响应共享 `{ success, count, data, ... }` 信封结构，客户端处理逻辑统一可预测 |
-| 6 | **双持久化路径** | 生产使用 MySQL；辅助的 `better-sqlite3` 脚本（`db_init.js`）让项目可**零外部服务**运行，便于演示 |
-| 7 | **完整的渐进式 UX 状态** | 加载、空结果、错误、成功四条渲染路径均有处理 —— 应用不会白屏或抛出原始堆栈 |
-| 8 | **数据库无关的种子策略** | 种子数据幂等且置于事务中（`db.transaction()`），重建数据库只需一条命令 |
+```
+┌──────────────────────────┐        ┌──────────────────────────┐
+│  clientside/  :4200      │        │  adminside/   :4300      │
+│  Angular 22 + TypeScript │        │  Angular 22 + TypeScript │
+│  首页·搜索·详情·报名·天气 │        │  列表·新建·编辑·删除     │
+└────────────┬─────────────┘        └────────────┬─────────────┘
+             │  HttpClient（强类型）             │
+             │  开发期 /api 走代理               │
+             └───────────────┬───────────────────┘
+                             │  HTTP / JSON
+             ┌───────────────▼───────────────────────────────┐
+             │            api/  :3000  (Express)             │
+             │  cors · json · routes                         │
+             │  ├── /api/events          读取 + CRUD         │
+             │  ├── /api/registrations   创建 + 列表         │
+             │  ├── /api/organizations   读取                │
+             │  └── /api/weather         Open-Meteo 代理     │
+             └───────────────┬───────────────────────────────┘
+                             │  mysql2 连接池（10，keep-alive）
+             ┌───────────────▼───────────────────────────────┐
+             │        MySQL 8  ·  charityevents_db           │
+             │  organizations ─┐                             │
+             │                 ├── events ──> categories     │
+             │  registrations ─┘  （外键、ENUM、索引）        │
+             └───────────────────────────────────────────────┘
+                             │
+                    ┌────────▼─────────┐
+                    │  Open-Meteo API  │  （仅服务端调用）
+                    └──────────────────┘
+```
+
+**请求生命周期 —— 报名流程**
+
+1. 用户访问 `/events/1`，`EventDetail` 通过 `withComponentInputBinding()` 直接取得 `id` 路由参数
+2. `EventService.getEventById(1)` → `GET /api/events/1`
+3. API 执行活动查询，再以 `registration_date DESC` 查询报名列表
+4. API 在服务端计算 `progress_percentage`、`tickets_sold`、`tickets_remaining`
+5. Angular 渲染详情页，并把 `latitude`/`longitude` 传给 `WeatherWidget`
+6. `WeatherWidget` → `GET /api/weather` → Express 代理 Open-Meteo → 返回翻译后的预报
+7. 用户点击 **Register now** → `/events/1/register`
+8. `Registration` 校验响应式表单后 `POST /api/registrations`
+9. API 校验参数、检查状态、检查剩余名额、写入、返回 **201**
+10. 前端把表单替换为报名确认回执
 
 ---
 
-## 4. 技术难点与解决方案
+## 4. 技术栈
 
-### 难点 1 —— 在动态构建的查询中防止 SQL 注入
-**问题：** 拼接用户输入是经典注入入口；但静态查询又无法表达可选筛选条件。
-**方案：** 只对 *SQL 片段* 做条件拼接，所有 *用户值* 一律通过 `params` 数组交给 `pool.execute()`。预编译语句将代码与数据分离，使注入在结构上无法发生。
+### 前端（两个应用）
 
-### 难点 2 —— 避免 N+1 查询问题
-**问题：** 返回活动及其类别与组织，容易写成每个活动三次查询 —— O(N) 次往返。
-**方案：** 单条查询配合 `INNER JOIN categories` 与 `LEFT JOIN organizations`。对组织使用 `LEFT` 是刻意的：没有主办方的活动仍须显示，内连接会将其静默丢弃。
-
-### 难点 3 —— 在无框架条件下跨页面传递状态
-**问题：** 没有客户端路由、没有全局状态容器，但详情页必须知道该取哪个活动。
-**方案：** 通过 URL 查询字符串传递活动 ID（`event.html?id=7`），用 `URLSearchParams` 读回。这使每个详情页**可深链、可分享、可刷新** —— 在这一点上甚至优于易失的内存状态。
-
-### 难点 4 —— 从界面症状反查跨层时区 Bug
-**问题：** 每个活动的日期都提前一天，每个倒计时徽章都显示 `NaN month(s) left` —— 但控制台没有报错，API 返回的 JSON 也语法合法。
-**方案：** 把一个值在三个层次之间完整追踪，最终定位到 `mysql2` 会把 MySQL 的 `DATE` 转成本地零点的 JS `Date`，序列化后成为比本地日期少一天的 UTC 时间戳（`2026-10-17T16:00:00.000Z`）。在源头通过连接池配置 `dateStrings: true` 修复，并在客户端增加防御性日期归一化，使界面优雅降级而不是打印 `NaN`。见 [§2.5](#25-时区安全的日期处理从界面症状反查出根因)。
-
-### 难点 5 —— 渲染大量卡片而不引发布局抖动
-**问题：** 逐条追加卡片会导致反复重排与可见卡顿。
-**方案：** 先在内存中拼装完整 HTML 字符串，再以一次 `innerHTML` 赋值提交；随后在下一动画帧用 `requestAnimationFrame` 播放进度条动画。
-
-### 难点 6 —— 在整个技术栈中协调 404/400/500 语义
-**问题：** 需要区分"请求格式错误""资源不存在""服务端故障"，并各自正确地呈现给用户。
-**方案：** API 对非数字 ID 返回 `400`、对不存在的记录返回 `404`、对数据库故障返回 `500`，各自携带 JSON 响应体。客户端先检查 `response.status`，再检查业务 `success` 标志。
-
-### 难点 7 —— 符合业务现实的外键删除语义
-**问题：** 一刀切的 `CASCADE` 会在组织被删除时连带删除历史活动 —— 这是有真实业务影响的数据丢失。
-**方案：** 按关系分别设定动作：用 `RESTRICT` 保护使用中的类别，用 `SET NULL` 在组织退出时保留活动。
-
----
-
-## 5. 技术栈
-
-### 后端
 | 技术 | 版本 | 作用 |
 |---|---|---|
-| Node.js | ≥ 18 | 运行时环境 |
-| Express | ^4.18 | HTTP 服务器、路由、中间件、静态托管 |
-| mysql2 | ^3.6 | 支持 Promise API 与连接池的 MySQL 驱动 |
-| better-sqlite3 | ^13.0 | 零配置 SQLite 引导脚本，用于本地演示 |
-| cors | ^2.8 | 跨域中间件（防御性，用于分离部署场景） |
-| dotenv | ^16.3 | 基于环境变量的配置 |
-| nodemon | ^3.0 | 开发期自动重启 |
+| Angular | **22.2** | 独立组件、信号、路由懒加载、无 Zone 变更检测 |
+| TypeScript | **6.0** | 端到端强类型，共享领域模型 |
+| Reactive Forms | Angular 22 | 基于 `Validators` 的校验与实时值信号 |
+| `HttpClient` + `withFetch` | Angular 22 | 强类型服务、RxJS `Observable` 管线 |
+| CSS3 | — | 两套自建设计系统（公众站暖色、后台中性色） |
 
-### 数据库
-| 技术 | 作用 |
-|---|---|
-| MySQL 8.x | 主关系型存储 —— InnoDB、`utf8mb4`、外键、ENUM、索引 |
-| SQLite | 种子脚本使用的单文件可移植存储 |
+未使用任何组件库、Tailwind 或状态管理库 —— 样式与状态全部手写。
 
-### 前端
-| 技术 | 作用 |
-|---|---|
-| HTML5 | 语义化页面结构，共三个页面 |
-| CSS3 | 自建设计系统 —— CSS 变量、Flexbox、Grid、关键帧动画、媒体查询 |
-| 原生 JavaScript (ES6+) | `fetch`、`async/await`、`Promise`、DOM API、`URLSearchParams`、`IntersectionObserver` 滚动渐显动画 |
+### 后端
 
-> **刻意未使用：** React / Vue / Angular、jQuery、任何 CSS 框架、任何打包工具。每一层抽象都是手工实现的。
-
-### 代码规模
-| 层次 | 文件数 | 行数 |
+| 技术 | 版本 | 作用 |
 |---|---|---|
-| 后端 (JS) | 4 | ~553 |
-| 前端 (JS) | 3 | ~831 |
-| 样式表 (CSS) | 1 | ~943 |
-| 标记 (HTML) | 3 | ~442 |
-| 数据库脚本 (SQL) | 1 | ~151 |
-| **合计** | **12** | **≈ 2,900** |
+| Node.js | ≥ 24.15 | 运行时（Angular 22 工具链要求） |
+| Express | 4.x | 路由、中间件、JSON 处理 |
+| mysql2 | 3.x | Promise API、连接池、`dateStrings` |
+| cors | 2.x | 允许两个开发服务器跨域访问 |
+| better-sqlite3 | 13.x | 零配置 SQLite 引导，便于本地演示 |
+
+### 数据与外部服务
+
+| 技术 | 作用 |
+|---|---|
+| MySQL 8.x | InnoDB、`utf8mb4`、语义化外键动作、`ENUM`、`CHECK`、`UNIQUE`、索引 |
+| Open-Meteo | 公共天气预报接口，仅由服务端调用 |
 
 ---
 
-## 6. 系统架构
+## 5. 数据库设计
+
+四张 **第三范式** 表，以 `events` 为核心事实表，`registrations` 为 A3 新增的事务明细表。
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                          浏览器（客户端）                         │
-│   index.html      search.html      event.html                    │
-│   home.js         search.js        event.js                      │
-│        │              │                │                         │
-│        └──────────────┴────────────────┘                         │
-│                       │  fetch() + async/await                   │
-└───────────────────────┼──────────────────────────────────────────┘
-                        │  HTTP / JSON
-┌───────────────────────▼──────────────────────────────────────────┐
-│                    EXPRESS 服务器  (api/server.js)                │
-│   cors() · express.json() · express.static('../client')          │
-│                       │                                          │
-│              ┌────────▼─────────┐                                │
-│              │  routes/events.js │  4 个 REST 端点               │
-│              └────────┬─────────┘                                │
-└───────────────────────┼──────────────────────────────────────────┘
-                        │  pool.execute(sql, params)
-┌───────────────────────▼──────────────────────────────────────────┐
-│                 MYSQL  ·  charityevents_db                       │
-│      organizations ──┐                                           │
-│                      ├── events ──> categories                   │
-│      （外键、ENUM 状态、索引）                                     │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-**请求生命周期（以搜索为例）：**
-1. 用户提交筛选表单 → `searchEvents()` 以 `preventDefault()` 拦截
-2. `URLSearchParams` 仅用已填写的字段构建查询字符串
-3. `fetch()` 发出 `GET /api/events/search?...`
-4. Express 路由到 `router.get('/search')` → 动态 SQL + 绑定参数
-5. MySQL 在已建索引的列上执行预编译语句
-6. JSON `{ success, count, filters, data }` 返回浏览器
-7. `map(renderEventCard).join()` 拼装 HTML；一次 `innerHTML` 写入完成全部卡片渲染
-8. `requestAnimationFrame` 播放进度条动画；`IntersectionObserver` 实现滚动渐显
-
----
-
-## 7. 数据库设计
-
-三张 **第三范式（3NF）** 规范化表，以 `events` 作为核心事实表。
-
-```
-┌────────────────────┐          ┌─────────────────────┐
-│   organizations    │          │     categories      │
-├────────────────────┤          ├─────────────────────┤
-│ org_id        PK   │          │ category_id    PK   │
-│ org_name           │          │ category_name       │
-│ mission_statement  │          │ category_description│
-│ description        │          │ icon_class          │
-│ contact_email      │          └──────────┬──────────┘
-│ contact_phone      │                     │
-│ website_url        │                     │
-│ logo_url           │                     │
-│ created_at         │                     │
-└─────────┬──────────┘                     │
-          │                                │
-          │  ON DELETE SET NULL            │  ON DELETE RESTRICT
-          │                                │
-     ┌────▼────────────────────────────────▼─────┐
-     │                  events                    │
-     ├────────────────────────────────────────────┤
-     │ event_id          PK                       │
-     │ event_name · short_description             │
-     │ full_description                           │
-     │ category_id       FK → categories          │
-     │ org_id            FK → organizations       │
-     │ event_date · event_time                    │
-     │ location · address · image_url             │
+┌────────────────────┐        ┌─────────────────────┐
+│   organizations    │        │     categories      │
+├────────────────────┤        ├─────────────────────┤
+│ org_id        PK   │        │ category_id    PK   │
+│ org_name           │        │ category_name       │
+│ mission_statement  │        │ category_description│
+│ description        │        │ icon_class          │
+│ contact_*          │        └──────────┬──────────┘
+│ website_url        │                   │
+└─────────┬──────────┘                   │ ON DELETE RESTRICT
+          │ ON DELETE SET NULL           │
+     ┌────▼──────────────────────────────▼──────┐
+     │                 events                    │
+     ├───────────────────────────────────────────┤
+     │ event_id            PK                    │
+     │ event_name · short_description            │
+     │ full_description                          │
+     │ category_id         FK → categories       │
+     │ org_id              FK → organizations    │
+     │ event_date · event_time                   │
+     │ location · address                        │
+     │ latitude · longitude    ← 天气            │
+     │ image_url                                 │
      │ ticket_price · goal_amount · current_amount│
-     │ status  ENUM(upcoming|active|past|suspended)│
+     │ status ENUM(upcoming|active|past|suspended)│
      │ max_participants · organizer_contact       │
      │ created_at · updated_at                    │
-     │                                            │
      │ INDEX (status) (event_date) (category_id)  │
+     └───────────────────┬───────────────────────┘
+                         │ ON DELETE RESTRICT
+     ┌───────────────────▼───────────────────────┐
+     │              registrations                 │
+     ├────────────────────────────────────────────┤
+     │ registration_id      PK                    │
+     │ event_id             FK → events           │
+     │ attendee_name                              │
+     │ attendee_email                             │
+     │ attendee_phone                             │
+     │ tickets_purchased    CHECK > 0             │
+     │ registration_date    DEFAULT CURRENT_TIMESTAMP │
+     │ special_requests                           │
+     │ UNIQUE (event_id, attendee_email)  ← 每人每活动一次 │
+     │ INDEX (event_id) (registration_date)       │
      └────────────────────────────────────────────┘
 ```
 
@@ -855,221 +861,355 @@ const parts = String(dateStr).substring(0, 10).split('-');
 
 | 决策 | 依据 |
 |---|---|
-| 3NF 规范化 | 消除更新异常 —— 组织联系方式仅存在于一行之中 |
-| `status` 使用 `ENUM` | 在数据库层面强制生命周期词汇表；非法状态无法表示 |
-| 金额使用 `DECIMAL(12,2)` | 精确十进制运算 —— 浮点数会在金额统计中引入舍入误差 |
-| 在 `status`、`event_date`、`category_id` 建索引 | 正是 `WHERE` 筛选与 `ORDER BY` 排序所用到的列 |
-| `updated_at ... ON UPDATE CURRENT_TIMESTAMP` | 无需应用层记账即可获得审计轨迹 |
-| `utf8mb4` 字符集 | 完整 Unicode 支持，含 Emoji 与中日韩文字 |
-| 独立 `organizations` 表 | 避免主办方信息在多个活动中重复（3NF 违规） |
+| 3NF 规范化 | 组织联系方式只存在一行，杜绝更新异常 |
+| `status` 使用 `ENUM` | 生命周期词汇由数据库强制，非法状态无法表示 |
+| 金额使用 `DECIMAL(12,2)` | 精确十进制运算，浮点会破坏筹款统计 |
+| `UNIQUE (event_id, attendee_email)` | 把"每人每活动只能报名一次"变成硬保证，而非期望 |
+| `CHECK (tickets_purchased > 0)` | 在 API 之下再次拒绝无意义票数 |
+| 报名表使用 `ON DELETE RESTRICT` | 保护报名者记录，使 409 规则成为结构性约束 |
+| 在 `status`、`event_date`、`category_id` 建索引 | 正是筛选与排序使用的列 |
+| `latitude` / `longitude` | Open-Meteo 生成场馆预报所必需 |
 
-**种子数据：** 10 个活动，覆盖 8 个类别与 4 个组织 —— 其中特意包含 1 个 `past` 与 1 个 `suspended` 活动，用以验证可见性过滤确实生效。
+**种子数据：** 4 个组织 · 8 个类别 · 10 个活动 · **13 条报名**，分布在 6 个活动上。活动 5、7、9、10 特意**没有**报名，以便演示后台删除的两种结果（被 409 拒绝 / 删除成功）。
+
+完整结构与数据集中在单一可导入文件：`database/charityevents_db.sql`。
 
 ---
 
-## 8. API 接口说明
+## 6. API 接口说明
 
-基础地址：`http://localhost:3000`
+基础地址：`http://localhost:3000/api`
 
-| # | 方法 | 端点 | 用途 | 服务页面 |
-|---|---|---|---|---|
-| 1 | `GET` | `/api` | 服务发现 / 健康检查 | — |
-| 2 | `GET` | `/api/events` | 进行中 + 即将举行的活动（含类别与组织） | 首页 |
-| 3 | `GET` | `/api/events/search` | 多条件筛选搜索 | 搜索页 |
-| 4 | `GET` | `/api/events/categories/list` | 全部分类及各分类下的活动数量 | 搜索下拉框 |
-| 5 | `GET` | `/api/events/:id` | 单个活动的完整详情 + 服务端计算进度 | 详情页 |
+### 活动
 
-### `GET /api/events`
-返回所有 `upcoming` 或 `active` 活动，按时间正序排列。
+| 方法 | 端点 | 用途 |
+|---|---|---|
+| `GET` | `/api` | 服务发现 / 端点索引 |
+| `GET` | `/api/health` | 数据库健康检查 |
+| `GET` | `/api/events` | 进行中 + 即将举行（首页） |
+| `GET` | `/api/events/search` | 组合筛选（搜索页） |
+| `GET` | `/api/events/categories/list` | 类别及其实时活动数 |
+| `GET` | `/api/events/admin/all` | **全部**活动，所有状态，含报名统计 |
+| `GET` | `/api/events/:id` | 完整详情 **含报名列表** |
+| `POST` | `/api/events` | 新建活动 |
+| `PUT` | `/api/events/:id` | 更新活动（支持完整或部分字段） |
+| `DELETE` | `/api/events/:id` | 删除 —— **有报名时返回 409** |
 
-### `GET /api/events/search`
-| 查询参数 | 类型 | 行为 |
+> 路由顺序很关键：`/admin/all` 必须声明在 `/:id` 之前，否则 Express 会把 `admin` 当成活动 id。
+
+### 报名
+
+| 方法 | 端点 | 用途 |
+|---|---|---|
+| `GET` | `/api/registrations?eventId=3` | 报名列表，可按活动过滤 |
+| `POST` | `/api/registrations` | 创建报名（购票） |
+
+### 组织与天气
+
+| 方法 | 端点 | 用途 |
+|---|---|---|
+| `GET` | `/api/organizations` | 后台下拉框所需的组织列表 |
+| `GET` | `/api/weather?lat=&lon=&timezone=` | 翻译后的 Open-Meteo 预报 |
+| `GET` | `/api/weather/codes` | WMO 代码 → 描述/图标对照表 |
+
+### 搜索参数
+
+| 参数 | 类型 | 行为 |
 |---|---|---|
 | `date` | `YYYY-MM-DD` | 精确日期匹配 |
-| `location` | 字符串 | **模糊匹配** —— 对 `location` 与 `address` 同时做 `LIKE %…%` |
-| `category` | 整数 | 精确类别 ID 匹配 |
-| `freeOnly` | `1` | 仅返回 `ticket_price = 0` 或 `NULL` 的活动 |
+| `location` | 字符串 | **模糊匹配** —— 对 `location` 与 `address` 同时 `LIKE %…%` |
+| `category` | 整数 | 精确类别 id |
+| `freeOnly` | `1` | 仅 `ticket_price = 0` 或 `NULL` |
 
-所有参数**均为可选且可自由组合**；未提供的筛选条件不会被加入 `WHERE` 子句。
+全部可选且可自由组合。
 
-### `GET /api/events/:id`
-返回活动及其关联的类别/组织数据，以及**由服务端计算**的 `progress_percentage`。
-- `400` —— id 非数字
-- `404` —— 活动不存在
+### 状态码
 
-### 错误契约
-所有失败都返回统一信封结构：
+| 码 | 含义 |
+|---|---|
+| `200` | 成功 |
+| `201` | 资源已创建 |
+| `400` | 校验失败（附带 `errors[]`） |
+| `404` | 活动不存在 |
+| `409` | 业务冲突 —— 重复报名、名额已满、或活动存在报名 |
+| `500` | 服务端异常 |
+| `502` / `504` | 上游天气服务失败 / 超时 |
+
+### 统一响应信封
+
 ```json
-{ "success": false, "message": "Event not found" }
+{ "success": true, "count": 3, "data": [ ... ] }
+{ "success": false, "message": "Validation failed", "errors": ["Email is required"] }
 ```
 
 ---
 
-## 9. 项目结构
+## 7. 前端架构（Angular 22）
+
+两个应用采用同一套结构：
 
 ```
-城市慈善活动管理动态网站/
-├── api/                          # 后端 —— Express RESTful API
-│   ├── server.js                 # 入口：中间件、路由、静态托管
-│   ├── event_db.js               # MySQL 连接池 + 健康检查
-│   ├── db_init.js                # SQLite 引导：建表 + 事务化种子数据
-│   ├── routes/
-│   │   └── events.js             # 4 个 REST 端点，动态 SQL 构建
-│   ├── package.json
-│   └── package-lock.json
-│
-├── client/                       # 前端 —— 无框架
-│   ├── index.html                # 首页：主视觉、关于我们、动态活动网格
-│   ├── search.html               # 搜索页：多条件筛选表单 + 结果区
-│   ├── event.html                # 详情页：完整信息、进度、注册模态框
-│   ├── css/
-│   │   └── style.css             # 设计系统：变量、Grid、Flexbox、动画
-│   ├── js/
-│   │   ├── home.js               # 请求生命周期 + 卡片渲染 + 主视觉统计
-│   │   ├── search.js             # 查询构建、关键词高亮、清除筛选
-│   │   └── event.js              # URL 参数解析 + 详情渲染
-│   └── images/
-│
-├── database/
-│   └── charityevents_db.sql      # MySQL 建表 + 种子数据（需导入）
-│
-├── docs/
-│   └── screenshots/              # §11 中引用的演示截图
-├── package.json
-└── README.md
+src/app/
+├── app.ts / app.html            # 外壳：导航栏 + router-outlet + 页脚
+├── app.config.ts                # providers：路由、HttpClient、滚动恢复
+├── app.routes.ts                # 每个页面懒加载
+├── core/
+│   ├── config/api.config.ts     # 单一 API 基址
+│   ├── models/*.ts              # 与 API 对应的强类型契约
+│   └── services/*.ts            # HTTP 与错误归一化
+├── shared/                      # 可复用展示组件
+└── pages/                       # 一页一目录
 ```
+
+**刻意使用的 Angular 22 特性**
+
+| 特性 | 价值所在 |
+|---|---|
+| **Signals**（`signal`、`computed`、`input`） | 组件状态全部是信号，因此无需 `markForCheck` 也能在无 Zone 下更新 |
+| **独立组件** | 全工程无 `NgModule`，每个组件显式声明自己需要的依赖 |
+| **`loadComponent` 懒加载** | 首屏只下载外壳 + 当前页面 |
+| **`withComponentInputBinding()`** | `/events/:id` 直接绑定到 `readonly id = input.required<string>()` |
+| **Reactive Forms** | 报名页与后台表单的校验，并以信号桥接实时值 |
+| **强类型 HTTP 服务** | 组件不直接接触 `HttpClient`，只接收 `Observable<CharityEvent>` |
+| **`takeUntilDestroyed`** | 天气订阅不会超出组件生命周期 |
+
+**错误处理**统一收敛在每个应用的 `extractApiError()`：优先取字段级 `errors[]`，其次 `message`，`status === 0` 时给出网络层提示。
+
+**公众站路由**
+
+| 路由 | 页面 |
+|---|---|
+| `/` | 首页 —— 主视觉、关于我们、实时活动网格 |
+| `/search` | 搜索 —— 四条件组合筛选 |
+| `/events/:id` | 详情 —— 记录、主办方、进度、**报名列表**、天气 |
+| `/events/:id/register` | 报名 —— 校验表单 + 确认回执 |
+
+**后台路由**
+
+| 路由 | 页面 |
+|---|---|
+| `/` | 活动列表 —— 统计、搜索、状态过滤、编辑/删除 |
+| `/events/new` | 新建表单 |
+| `/events/:id/edit` | 编辑表单 + 该活动的报名数据 |
 
 ---
 
-## 10. 快速开始
+## 8. 天气集成
+
+```
+Angular WeatherWidget
+        │  GET /api/weather?lat=39.9087&lon=116.4576&timezone=Asia/Shanghai
+        ▼
+Express /api/weather
+        │  · 校验经纬度范围
+        │  · 10 分钟内存缓存
+        │  · 8 秒 AbortController 超时
+        │  · WMO 代码 → 描述 + 图标 + 分类
+        ▼
+https://api.open-meteo.com/v1/forecast
+        ?latitude=…&longitude=…
+        &daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max
+        &forecast_days=7&timezone=…
+```
+
+**为什么用代理而不是浏览器直连？**
+
+1. **不依赖第三方 CORS** —— 只需要信任自己的源。
+2. **唯一翻译表** —— 两个应用对代码 `95` 渲染完全一致的文案。
+3. **缓存** —— 十次页面浏览不会变成十次上游请求。
+4. **超时可控** —— 第三方变慢不会无限期拖住界面。
+5. **便于替换** —— 更换服务商只需改一个文件，而非所有组件。
+
+组件的降级路径完整：无经纬度 → 中性提示；上游失败 → 错误文案；加载中 → 占位。任何时候都不会渲染出一个坏掉的空框。
+
+---
+
+## 9. 技术难点与解决方案
+
+### 难点 1 —— 保证"每人每活动只能报名一次"
+
+**问题：** "先查再插"在并发下存在竞态，两个请求可能同时判定"未报名"并各自插入。
+**方案：** 用 `UNIQUE (event_id, attendee_email)` 让保证成为结构性约束。API 仍做预检查以给出友好提示，但数据库才是权威，`ER_DUP_ENTRY` 被转换为 HTTP **409**。
+
+### 难点 2 —— 删除活动而不销毁报名历史
+
+**问题：** 天然选择 `ON DELETE CASCADE` 会静默清除报名记录。
+**方案：** `ON DELETE RESTRICT` 加上显式预检 `COUNT(*)`。API 返回 **409** 并附带 `registration_count` 与 `tickets_sold`，后台界面原样呈现：*"This event cannot be deleted because it already has registrations. (3 registration(s), 7 ticket(s))"*。
+
+### 难点 3 —— 让"活动可见性"成为数据层的职责
+
+**问题：** 哪些活动对公众可见，很容易散落到各个查询里。
+**方案：** 所有公众查询统一携带 `WHERE status IN ('upcoming','active')`，后台接口则刻意不带。暂停一个活动只需一条 `UPDATE`，它会同时从首页和搜索结果中消失。
+
+### 难点 4 —— 定位跨层时区 Bug
+
+**问题：** 所有活动日期提前一天、倒计时显示 `NaN month(s) left`，但控制台无报错，API 响应语法合法。
+**方案：** 在三层之间追踪同一个值 —— `mysql2` 把 `DATE` 转成本地零点的 JS `Date`，序列化后成为少一天的 UTC 时刻。从源头修复（`dateStrings: true`），并在客户端设防（截取前 10 字符 + `isNaN` 兜底）。
+
+### 难点 5 —— 两个 SPA、一个 API、不出 CORS 问题
+
+**问题：** 三个服务三个端口，容易踩跨域与硬编码主机名。
+**方案：** 两个 Angular 工程各自提供 `proxy.conf.json` 将 `/api` 转发到 `:3000`，应用代码只使用相对基址 `/api`，不含任何主机名。API 同时开启 `cors()` 作为分离部署时的兜底。
+
+### 难点 6 —— 无 Zone 变更检测与响应式表单
+
+**问题：** Angular 22 不使用 zone，写入普通字段的状态不会触发重渲染。
+**方案：** 所有可变状态都是信号，派生值（合计、过滤结果、统计）都是 `computed()`。需要驱动界面的表单值用 `toSignal(form.valueChanges)` 桥接，因此"Total due"会随票数实时更新。
+
+### 难点 7 —— 详情页的 N+1 查询
+
+**问题：** 活动 + 报名 + 类别 + 组织，容易写成每个请求四次查询。
+**方案：** 一次 `JOIN` 活动查询 + 一次报名查询 —— 恒定两次往返；聚合值（`tickets_sold`、`tickets_remaining`、`progress_percentage`）在服务端统一计算，保证两个前端显示一致。
+
+---
+
+## 10. 演示截图
+
+以下均为系统连接 MySQL 实际运行时的实时截屏。
+
+### 公众网站
+
+| 首页 —— 主视觉与实时统计 | 首页 —— 动态活动网格 |
+|---|---|
+| ![首页主视觉与实时统计](docs/screenshots/a3/a3-01-home.png) | ![带状态徽章、倒计时与进度条的活动卡片](docs/screenshots/a3/a3-02-home-events.png) |
+
+主视觉数字由 API 响应计算得出，而非硬编码。每张卡片均带有状态徽章、实时倒计时与筹款进度条。
+
+| 搜索 —— 结果与关键词高亮 | 详情 —— 报名列表、进度与天气 |
+|---|---|
+| ![搜索结果中匹配的地点被高亮](docs/screenshots/a3/a3-03-search.png) | ![活动详情页的报名表格与天气组件](docs/screenshots/a3/a3-04-detail.png) |
+
+![报名成功确认](docs/screenshots/a3/a3-05-register-success.png)
+
+### 管理后台
+
+| 活动列表与报名统计 | 删除被完整性规则拦截 |
+|---|---|
+| ![管理端活动列表、统计与状态](docs/screenshots/a3/a3-06-admin-list.png) | ![因存在报名而拒绝删除](docs/screenshots/a3/a3-07-admin-delete-blocked.png) |
+
+---
+
+## 11. 快速开始
 
 ### 环境要求
-- Node.js ≥ 18
-- 本地运行中的 MySQL 8.x
 
-### 1 · 创建数据库
+- **Node.js ≥ 24.15**（Angular 22 工具链要求）
+- 本地运行中的 **MySQL 8.x**
+- npm 11+
+
+### 1 · 创建并填充数据库
+
 ```bash
 mysql -u root -p < database/charityevents_db.sql
 ```
-该脚本会创建 `charityevents_db`、三张表，并写入 10 个活动 / 8 个类别 / 4 个组织。
 
-### 2 · 配置连接
-按本地情况修改 `api/event_db.js`：
-```js
-const pool = mysql.createPool({
-  host: 'localhost', port: 3306,
-  user: 'root', password: '',
-  database: 'charityevents_db', charset: 'utf8mb4',
-  connectionLimit: 10
-});
-```
+该脚本创建 `charityevents_db` 及全部四张表，并写入 10 个活动 / 13 条报名。文件无 BOM，可重复执行（会先删库再重建）。
 
-### 3 · 安装并启动
+### 2 · 启动 API
+
 ```bash
 cd api
 npm install
 node server.js
 ```
-预期的启动输出：
+
+预期输出：
+
 ```
 MySQL database connected successfully!
   Events: 10 | Categories: 8
-  Server:     http://localhost:3000
-  Website:    http://localhost:3000/
-  API:        http://localhost:3000/api
+  API:       http://localhost:3000/api
 ```
 
-### 4 · 打开网站
-| 页面 | 地址 |
-|---|---|
-| 首页 | http://localhost:3000/ |
-| 搜索页 | http://localhost:3000/search.html |
-| 详情页 | http://localhost:3000/event.html?id=1 |
-| API 根 | http://localhost:3000/api |
+### 3 · 启动公众网站
 
-### 可选 —— 无需 MySQL 的演示
+```bash
+cd clientside
+npm install
+npm start          # ng serve → http://localhost:4200
+```
+
+### 4 · 启动管理后台
+
+```bash
+cd adminside
+npm install
+npm start          # ng serve → http://localhost:4300
+```
+
+| 服务 | 地址 |
+|---|---|
+| 公众网站 | http://localhost:4200 |
+| 管理后台 | http://localhost:4300 |
+| API | http://localhost:3000/api |
+
+### 可选 —— 不依赖 MySQL
+
 ```bash
 cd api && node db_init.js   # 生成独立的 SQLite 数据库
 ```
 
 ---
 
-## 11. 演示截图
+## 12. 部署与提交打包
 
-以下所有图片均为应用连接 MySQL `charityevents_db` 数据库实际运行时的实时截屏。
+### 按要求分成三个压缩包
 
-### 11.1 首页
-
-| 主视觉区与实时统计 | 动态活动网格 |
+| 压缩包 | 内容 |
 |---|---|
-| ![首页主视觉区与实时统计](docs/screenshots/01a-home-page-hero.png) | ![带有状态徽章、倒计时与进度条的活动卡片](docs/screenshots/01b-home-page-events.png) |
+| `usernameA3-clientside.zip` | 整个 `clientside/` 工程（源码、`package.json`、`proxy.conf.json`、`angular.json`） |
+| `usernameA3-adminside.zip` | 整个 `adminside/` 工程 |
+| `usernameA3-api.zip` | `api/` 源码 **加上** `database/charityevents_db.sql` |
 
-主视觉区的数字（`8+ Charity Events`、`4 Organizations`、`$106K+ Funds Raised`）是**由 API 响应计算得出**的，而非硬编码。每张卡片都带有状态徽章、实时倒计时与筹款进度条，整个网格完全由 `GET /api/events` 填充。
+**打包前排除：** `node_modules/`、`dist/`、`.angular/`、`*.log`。评分人会自行执行 `npm install`。
 
-![关于我们板块](docs/screenshots/01c-home-page-about.png)
+### 生产构建
 
-由硬编码 HTML 渲染的静态"关于我们"板块。
+```bash
+cd clientside && npm run build     # → dist/clientside/browser
+cd adminside  && npm run build     # → dist/adminside/browser
+```
 
-### 11.2 搜索页 —— 多条件筛选
+### 部署到 SCU cPanel
 
-| 筛选表单 | 带关键词高亮的结果 |
-|---|---|
-| ![包含日期、地点、类别与仅免费控件的搜索表单](docs/screenshots/02-search-filters.png) | ![匹配的地点关键词被黄色高亮](docs/screenshots/03-search-results.png) |
+1. 先上传 API，执行 `npm install --omit=dev`，通过 cPanel 的 Node.js 应用管理器（或 Passenger）启动。
+2. 通过 phpMyAdmin 导入 `charityevents_db.sql`。
+3. 用 cPanel 的 MySQL 凭据更新 `api/event_db.js`。
+4. 分别把 `dist/*/browser` 上传到各自的站点根目录。
+5. 修改 `clientside/src/app/core/config/api.config.ts` 与 `adminside/src/app/core/config/api.config.ts` 中的 `API_BASE` 指向已部署的 API 后重新构建；若 API 与前端同域，则保持相对路径 `/api` 即可。
 
-![无匹配结果时的空状态](docs/screenshots/04-search-empty-state.png)
-
-四个相互独立的筛选控件（日期、地点、类别、仅免费）可自由组合；结果头部会报告结果数量并回显所应用的筛选条件。匹配到的地点文本通过 `<mark>` 就地高亮。
-
-### 11.3 活动详情页
-
-| 完整活动记录 | 注册模态框 |
-|---|---|
-| ![活动详情页：描述、信息卡与筹款进度](docs/screenshots/05-event-detail.png) | ![功能建设中模态对话框](docs/screenshots/06-register-modal.png) |
-
-### 11.4 后端
-
-| API 响应（Postman） | 数据库表结构 |
-|---|---|
-| ![Postman 中组合搜索请求返回的 JSON](docs/screenshots/07-postman-search.png) | ![包含外键与 ENUM 的 MySQL 建表语句](docs/screenshots/08-database-schema.png) |
-
-> **截图命名约定：** 文件统一存放于 `docs/screenshots/`，文件名全部小写并以连字符分隔（**不使用空格**，因为空格会破坏 Markdown 图片路径）；首页的多张视图以 `01a` / `01b` / `01c` 编号，使阅读顺序与页面滚动顺序一致。
+> 每位学生必须部署到**自己**的 cPanel 账号。
 
 ---
 
-## 12. 所体现的工程能力
+## 13. 所体现的能力与 AI/ML 可扩展性
 
-本项目直接对应 **软件工程** 与 **人工智能/机器学习** 研究生阶段所要求的能力项：
-
-| 能力项 | 本项目中的证据 |
+| 能力项 | 证据 |
 |---|---|
-| 关系型数据建模 | 3NF 表结构、主外键、引用动作、ENUM 域、索引 |
-| SQL 能力 | 多表 `JOIN`、配合 `LEFT JOIN` 的聚合 `COUNT`、动态 `WHERE` 构建、`ORDER BY` |
-| 后端 / API 工程 | Express 中间件管线、RESTful 资源设计、正确的 HTTP 状态语义、统一响应契约 |
-| 安全意识 | 预编译语句（防 SQL 注入）、参数校验、错误信息脱敏 |
-| 异步编程 | `async/await`、`Promise` 链、`fetch`、非阻塞 I/O |
-| 前端 / DOM 工程 | 无框架渲染、单次 DOM 写入、`IntersectionObserver`、响应式 CSS、动画 |
-| 软件架构 | 分层解耦（表现层 / 路由层 / 持久层）、同源部署、配置外部化 |
-| 数据管线思维 | 数据从规范化存储 → SQL 转换 → JSON 序列化 → DOM 渲染，每个边界均有校验 |
-| 调试与正确性 | 时区偏移问题诊断、N+1 消除、空/错误状态全覆盖 |
+| 关系型数据建模 | 4 张 3NF 表，`UNIQUE`、`CHECK`、`ENUM`、语义化外键动作、索引 |
+| SQL | 多表 `JOIN`、相关子查询 `COUNT`、动态 `WHERE`、`GROUP BY` 聚合 |
+| API 工程 | 完整 C.R.U.D.、正确的 HTTP 语义（200/201/400/404/409）、统一信封 |
+| 安全意识 | 预编译语句、参数校验、约束级唯一性、错误信息不泄露内部细节 |
+| TypeScript | 跨服务与模板共享的严格领域模型，应用代码中无 `any` |
+| Angular 架构 | 独立组件、信号、无 Zone、懒加载、强类型服务、响应式表单 |
+| 响应式编程 | RxJS `Observable` 管线、`takeUntilDestroyed`、`toSignal` 桥接 |
+| 软件架构 | 三个可独立部署的应用共享一个契约；第三方服务端集成 |
+| 正确性 | 跨层时区 Bug 的定位与修复；名额与唯一性由结构保证 |
 
-最后一行中的 **数据管线思维** 是最可迁移的能力：能够追踪并校验一条记录从存储、经转换、到消费方的完整旅程 —— 这正是构建、服务化与监控机器学习管线所必需的素养。
+### 面向 AI/ML 的延展
 
----
+系统已经暴露出智能层所需要的接口：
 
-## 13. 未来工作 —— 面向 AI/ML 的可扩展性
-
-当前系统是一个完整且规范的动态网站。然而它的架构是一块**有意为之的 AI/ML 扩展地基**，因为每一层都已经暴露出智能功能恰好需要的接口。
-
-| 方向 | 现有架构如何支撑 |
+| 方向 | 现有基础 |
 |---|---|
-| **语义搜索** | `full_description` 这个 TEXT 字段天然适合作为向量语料；将 `LIKE` 筛选替换为向量相似度，同时保持 API 契约不变 |
-| **推荐系统** | `events`、`categories`、`organizations` 已提供实体；新增 `registrations` 表即可得到协同过滤所需的用户–物品交互矩阵 |
-| **筹款预测** | 各活动的 `goal_amount` / `current_amount` 时间序列已是结构化数据 —— 天然适合回归或时间序列预测 |
-| **自然语言查询解析** | 自然语言查询（"下个月广州的免费音乐会"）可被解析为现有的 `{date, location, category, freeOnly}` 参数集 —— API 恰好接受这种结构化形式 |
-| **内容自动审核** | 违规活动目前通过 `status = 'suspended'` 人工标记；文本/图像分类器可自动完成该判断并写入同一字段 |
-| **活动图像理解** | 各活动的 `image_url` 字段构成现成图像数据集，可用于分类或自动打标 |
+| **推荐系统** | `events`、`categories`、`organizations`、`registrations` 已构成现成的用户–物品交互矩阵 |
+| **需求预测** | `(event_date, target_capacity, tickets_sold)` 是结构化时间序列数据 |
+| **语义搜索** | `full_description` 是天然的向量语料；在保持端点不变的前提下把 `LIKE` 换成向量相似度即可 |
+| **自然语言搜索** | 大模型可以直接输出端点已接受的 `{date, location, category, freeOnly}` 对象 |
+| **内容审核** | `status = 'suspended'` 正是分类器应当写入的钩子字段 |
+| **异常检测** | 各活动的报名速度是简单而有意义的信号 |
 
-**关键的架构洞察：** API 层已经是注入智能的正确位置。一个由模型驱动的服务可以挂在 `/api/events/search` 之后，或新增 `/api/recommendations` 端点，而**无需改动任何一行前端代码** —— 因为前端只依赖 **JSON 契约**，而不关心答案是如何产生的。正是这种清晰的分离，使本项目成为 AI 增强开发的可靠基础。
+关键的架构性质：**两个前端只依赖 JSON 契约**。一个由模型驱动的服务可以替换或扩展 `/api/events/search`，或新增 `/api/recommendations`，而无需改动任何一个 Angular 组件。
 
 ---
 
@@ -1077,6 +1217,6 @@ cd api && node db_init.js   # 生成独立的 SQLite 数据库
 
 **[Your Name]** · Student ID **[Your ID]**
 
-Coursework: PROG2002 Web Development II · Assessment 2
+PROG2002 Web Development II · Assessment 3
 
-> Built with MySQL, Express, and vanilla JavaScript — no frameworks, no shortcuts.
+> Angular 22 + TypeScript · Node.js + Express · MySQL 8 · Open-Meteo

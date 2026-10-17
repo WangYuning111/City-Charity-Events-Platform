@@ -1,0 +1,232 @@
+@if (loading()) {
+  <div class="container">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading event details…</p>
+    </div>
+  </div>
+} @else if (error()) {
+  <div class="container" style="padding: 3rem 1.5rem">
+    <div class="alert alert-error">
+      <span>⚠️</span>
+      <span>{{ error() }}</span>
+    </div>
+    <a class="btn btn-primary" routerLink="/search">← Back to search</a>
+  </div>
+} @else if (event(); as ev) {
+  <div class="detail-hero">
+    <img
+      [src]="ev.image_url || fallbackImage"
+      [alt]="ev.event_name"
+      (error)="$any($event.target).src = fallbackImage"
+    />
+    <div class="detail-hero-overlay">
+      <span [class]="'badge badge-' + ev.status">{{ statusText(ev.status) }}</span>
+      <h1>{{ ev.event_name }}</h1>
+      <p style="opacity: 0.92">
+        📍 {{ ev.location }} &nbsp;·&nbsp; 📅 {{ dateText(ev.event_date) }}
+        &nbsp;·&nbsp; 🕐 {{ timeText(ev.event_time) }}
+      </p>
+      @if (countdown()) {
+        <span class="countdown-pill" style="position: static; align-self: flex-start">
+          ⏱ {{ countdown() }}
+        </span>
+      }
+    </div>
+  </div>
+
+  <div class="container">
+    <nav class="breadcrumb">
+      <a routerLink="/">Home</a>
+      <span>›</span>
+      <a routerLink="/search">Search Events</a>
+      <span>›</span>
+      <span>{{ ev.event_name }}</span>
+    </nav>
+
+    <div class="detail-layout">
+      <!-- ============ LEFT COLUMN ============ -->
+      <div class="detail-main">
+        <section class="panel">
+          <h2>About this event</h2>
+          <div class="description-text">
+            {{ ev.full_description || ev.short_description || 'No description available.' }}
+          </div>
+        </section>
+
+        <!-- ===== Registrations (new in A3) ===== -->
+        <section class="panel">
+          <div class="row" style="justify-content: space-between; margin-bottom: 0.9rem">
+            <h2 style="margin: 0">
+              Registrations
+              <span class="chip">{{ ev.registration_count ?? 0 }}</span>
+            </h2>
+            <span class="field-hint">
+              {{ ticketsSold() }} ticket(s) sold
+              @if (ev.tickets_remaining !== null && ev.tickets_remaining !== undefined) {
+                · {{ ev.tickets_remaining }} remaining
+              }
+            </span>
+          </div>
+
+          @if (!ev.registrations || ev.registrations.length === 0) {
+            <div class="empty-state" style="padding: 2rem 1rem">
+              <span class="icon">🎟️</span>
+              <h3>No registrations yet</h3>
+              <p>Be the first to support this event.</p>
+            </div>
+          } @else {
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Attendee</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Tickets</th>
+                    <th>Registered</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (reg of ev.registrations; track reg.registration_id; let i = $index) {
+                    <tr>
+                      <td>{{ i + 1 }}</td>
+                      <td><strong>{{ reg.attendee_name }}</strong></td>
+                      <td>{{ reg.attendee_email }}</td>
+                      <td>{{ reg.attendee_phone || '—' }}</td>
+                      <td>{{ reg.tickets_purchased }}</td>
+                      <td>{{ dateTimeText(reg.registration_date) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <p class="field-hint" style="margin-top: 0.6rem">
+              Sorted by most recent registration first.
+            </p>
+          }
+        </section>
+
+        @if (ev.org_name) {
+          <section class="panel">
+            <h2>Organiser</h2>
+            <p style="font-weight: 700; margin-bottom: 0.3rem">{{ ev.org_name }}</p>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem">
+              {{ ev.mission_statement }}
+            </p>
+            <p style="font-size: 0.9rem; color: var(--text-secondary)">
+              {{ ev.org_description }}
+            </p>
+          </section>
+        }
+      </div>
+
+      <!-- ============ RIGHT COLUMN ============ -->
+      <aside class="sticky-side">
+        <section class="panel">
+          <h3>Event information</h3>
+          <div class="info-list">
+            <div class="info-item">
+              <span class="info-icon">📅</span>
+              <div>
+                <div class="info-label">Date</div>
+                <div class="info-value">{{ dateText(ev.event_date) }}</div>
+              </div>
+            </div>
+            <div class="info-item">
+              <span class="info-icon">🕐</span>
+              <div>
+                <div class="info-label">Time</div>
+                <div class="info-value">{{ timeText(ev.event_time) }}</div>
+              </div>
+            </div>
+            <div class="info-item">
+              <span class="info-icon">📍</span>
+              <div>
+                <div class="info-label">Venue</div>
+                <div class="info-value">{{ ev.location }}</div>
+                @if (ev.address) {
+                  <div class="field-hint">{{ ev.address }}</div>
+                }
+              </div>
+            </div>
+            <div class="info-item">
+              <span class="info-icon">🏷️</span>
+              <div>
+                <div class="info-label">Category</div>
+                <div class="info-value">{{ ev.category_name }}</div>
+              </div>
+            </div>
+            <div class="info-item">
+              <span class="info-icon">🏢</span>
+              <div>
+                <div class="info-label">Organisation</div>
+                <div class="info-value">{{ ev.org_name || 'Not specified' }}</div>
+              </div>
+            </div>
+            <div class="info-item">
+              <span class="info-icon">🎫</span>
+              <div>
+                <div class="info-label">Ticket price</div>
+                <div class="info-value">
+                  {{ isFree() ? 'Free entry' : money(ev.ticket_price) + ' / person' }}
+                </div>
+              </div>
+            </div>
+            @if (ev.max_participants) {
+              <div class="info-item">
+                <span class="info-icon">👥</span>
+                <div>
+                  <div class="info-label">Capacity</div>
+                  <div class="info-value">Limited to {{ ev.max_participants }} participants</div>
+                </div>
+              </div>
+            }
+            @if (ev.organizer_contact) {
+              <div class="info-item">
+                <span class="info-icon">📞</span>
+                <div>
+                  <div class="info-label">Contact</div>
+                  <div class="info-value">{{ ev.organizer_contact }}</div>
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+
+        @if (ev.goal_amount > 0) {
+          <section class="panel">
+            <h3>Fundraising progress</h3>
+            <div class="goal-numbers">
+              <span>Raised<strong>{{ money(ev.current_amount) }}</strong></span>
+              <span>Goal<strong>{{ money(ev.goal_amount) }}</strong></span>
+            </div>
+            <div class="progress-bar" style="height: 12px">
+              <div class="progress-fill" [style.width.%]="progress()"></div>
+            </div>
+            <p class="field-hint" style="margin-top: 0.5rem">
+              {{ ev.progress_percentage ?? progress() }}% completed
+            </p>
+          </section>
+        }
+
+        <app-weather-widget [latitude]="ev.latitude" [longitude]="ev.longitude" />
+
+        @if (canRegister()) {
+          <a
+            class="btn btn-primary btn-lg btn-block"
+            [routerLink]="['/events', ev.event_id, 'register']"
+          >
+            {{ registerLabel() }}
+          </a>
+        } @else {
+          <button type="button" class="btn btn-lg btn-block" disabled
+                  style="background: var(--text-muted); color: #fff">
+            {{ registerLabel() }}
+          </button>
+        }
+      </aside>
+    </div>
+  </div>
+}

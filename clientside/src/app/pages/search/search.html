@@ -1,0 +1,118 @@
+<header class="page-header">
+  <div class="container">
+    <h1>Discover Charity Events</h1>
+    <p>Combine any of the filters below to find events that match your interests</p>
+  </div>
+</header>
+
+<div class="container">
+  <nav class="breadcrumb">
+    <a routerLink="/">Home</a>
+    <span>›</span>
+    <span>Search Events</span>
+  </nav>
+
+  <!-- ===== Filter form ===== -->
+  <section class="panel" style="margin-bottom: 2rem">
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="filterDate">📅 Event date</label>
+          <input id="filterDate" type="date" class="form-control" formControlName="date" />
+        </div>
+
+        <div class="form-group">
+          <label for="filterLocation">📍 Location</label>
+          <input
+            id="filterLocation"
+            type="text"
+            class="form-control"
+            [class.invalid]="locationControl.invalid && locationControl.touched"
+            formControlName="location"
+            placeholder="Enter a city or venue name…"
+            autocomplete="off"
+          />
+          @if (locationControl.invalid && locationControl.touched) {
+            <span class="field-error">Location must be 80 characters or fewer.</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="filterCategory">🏷️ Category</label>
+          <select id="filterCategory" class="form-control" formControlName="category">
+            <option value="">All categories</option>
+            @for (category of categories(); track category.category_id) {
+              <option [value]="category.category_id">
+                {{ category.category_name }} ({{ category.event_count }})
+              </option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group" style="justify-content: flex-end">
+          <label class="checkbox-row">
+            <input type="checkbox" formControlName="freeOnly" />
+            🎫 Free events only
+          </label>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top: 1.25rem">
+        <button type="submit" class="btn btn-primary" [disabled]="loading()">
+          🔍 Search events
+        </button>
+        <button type="button" class="btn btn-ghost" (click)="clearFilters()">
+          ✕ Clear filters
+        </button>
+        <span class="field-hint">All filters are optional and can be combined freely.</span>
+      </div>
+    </form>
+  </section>
+
+  <!-- ===== Results ===== -->
+  @if (error()) {
+    <div class="alert alert-error">
+      <span>⚠️</span>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Searching events…</p>
+    </div>
+  } @else if (searched()) {
+    <div class="results-header">
+      <h3>Search results</h3>
+      <span class="results-count">
+        Found {{ results().length }} event(s)
+        @if (appliedFilters().length) {
+          · {{ appliedFilters().join(' · ') }}
+        } @else {
+          · no filters applied
+        }
+      </span>
+    </div>
+
+    @if (results().length === 0) {
+      <div class="empty-state">
+        <span class="icon">🔍</span>
+        <h3>No events matched your criteria</h3>
+        <p>Try removing a filter or broadening your search.</p>
+      </div>
+    } @else {
+      <div class="events-grid">
+        @for (event of results(); track event.event_id) {
+          <app-event-card [event]="event" [highlight]="highlightTerm()" />
+        }
+      </div>
+    }
+  } @else {
+    <div class="empty-state">
+      <span class="icon">🗓️</span>
+      <h3>Ready when you are</h3>
+      <p>Choose any combination of date, location and category, then search.</p>
+    </div>
+  }
+</div>
