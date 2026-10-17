@@ -1,1 +1,43 @@
 :host { display: block; }
+
+/* Column headers double as sort controls, so they must look like buttons
+   without losing the table-header typography. */
+.sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.sort-btn:hover { color: var(--brand); }
+.sort-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 3px; }
+
+.sort-arrow {
+  font-size: 0.85em;
+  opacity: 0.55;
+  line-height: 1;
+}
+
+th[aria-sort='ascending'] .sort-arrow,
+th[aria-sort='descending'] .sort-arrow { opacity: 1; color: var(--brand); }
+
+th[aria-sort='ascending'],
+th[aria-sort='descending'] { color: var(--ink); }
+
+/* Spacing inside the action cluster */
+.cell-actions .btn + .btn { margin-left: 0.3rem; }
+
+.modal-hint {
+  margin: 0.9rem 0 0;
+  font-size: 0.75rem;
+  color: var(--faint);
+  text-align: right;
+}

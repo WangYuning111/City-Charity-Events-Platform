@@ -1,25 +1,34 @@
 <div class="page-head">
   <div>
     <h1>Charity events</h1>
-    <p>Create, update and remove events. Every status is listed here, including past and suspended events.</p>
+    <p>
+      Create, update and remove events. Every status is listed here, including past and
+      suspended events.
+    </p>
   </div>
   <a class="btn btn-primary" routerLink="/events/new">＋ New event</a>
 </div>
 
 <!-- ===== Feedback ===== -->
-@if (notice()) {
-  <div class="alert alert-success">
-    <span>✓</span>
-    <span style="flex: 1">{{ notice() }}</span>
-    <button type="button" class="btn btn-sm btn-outline" (click)="dismissNotice()">Dismiss</button>
-  </div>
-}
+<div aria-live="polite">
+  @if (notice()) {
+    <div class="alert alert-success">
+      <span>✓</span>
+      <span style="flex: 1">{{ notice() }}</span>
+      <button type="button" class="btn btn-sm btn-outline" (click)="dismissNotice()">
+        Dismiss
+      </button>
+    </div>
+  }
+</div>
 
 @if (error()) {
-  <div class="alert alert-error">
+  <div class="alert alert-error" role="alert">
     <span>⚠️</span>
     <span style="flex: 1">{{ error() }}</span>
-    <button type="button" class="btn btn-sm btn-outline" (click)="dismissError()">Dismiss</button>
+    <button type="button" class="btn btn-sm btn-outline" (click)="dismissError()">
+      Dismiss
+    </button>
   </div>
 }
 
@@ -46,20 +55,25 @@
 <!-- ===== Table ===== -->
 <section class="panel">
   <div class="panel-head">
-    <h2>All events</h2>
+    <h2>
+      All events
+      <span class="pill">{{ visibleEvents().length }} shown</span>
+    </h2>
 
     <div class="toolbar">
       <input
         type="search"
         class="form-control"
         placeholder="Search name, category or venue…"
+        aria-label="Search events"
         [value]="search()"
         (input)="search.set($any($event.target).value)"
       />
 
       <select
         class="form-control"
-        style="max-width: 170px"
+        style="max-width: 165px"
+        aria-label="Filter by status"
         [value]="statusFilter()"
         (change)="statusFilter.set($any($event.target).value)"
       >
@@ -70,6 +84,25 @@
         <option value="suspended">Suspended</option>
       </select>
 
+      <select
+        class="form-control"
+        style="max-width: 175px"
+        aria-label="Filter by category"
+        [value]="categoryFilter()"
+        (change)="categoryFilter.set($any($event.target).value)"
+      >
+        <option value="">All categories</option>
+        @for (category of categories(); track category.category_id) {
+          <option [value]="category.category_id">{{ category.category_name }}</option>
+        }
+      </select>
+
+      @if (hasActiveFilters()) {
+        <button type="button" class="btn btn-outline btn-sm" (click)="clearFilters()">
+          ✕ Clear filters
+        </button>
+      }
+
       <button type="button" class="btn btn-outline btn-sm" (click)="load()">↻ Refresh</button>
     </div>
   </div>
@@ -79,36 +112,82 @@
       <div class="spinner"></div>
       <span>Loading events…</span>
     </div>
-  } @else if (filtered().length === 0) {
+  } @else if (visibleEvents().length === 0) {
     <div class="empty-state">
       <span class="icon">📭</span>
       <h3>No events match this view</h3>
-      <p>Try clearing the search box or the status filter.</p>
+      <p>
+        @if (hasActiveFilters()) {
+          Try clearing the search box or the filters.
+        } @else {
+          There are no events yet — create the first one.
+        }
+      </p>
+      @if (hasActiveFilters()) {
+        <button type="button" class="btn btn-outline mt-1" (click)="clearFilters()">
+          Clear filters
+        </button>
+      }
     </div>
   } @else {
     <div class="table-wrap">
       <table class="data-table">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Event</th>
-            <th>Date</th>
-            <th>Status</th>
-            <th>Registrations</th>
-            <th>Tickets</th>
-            <th style="text-align: right">Actions</th>
+            <th [attr.aria-sort]="ariaSort('event_id')" style="width: 60px">
+              <button type="button" class="sort-btn" (click)="sortBy('event_id')">
+                ID <span class="sort-arrow">{{ sortIndicator('event_id') }}</span>
+              </button>
+            </th>
+
+            <th [attr.aria-sort]="ariaSort('event_name')">
+              <button type="button" class="sort-btn" (click)="sortBy('event_name')">
+                Event <span class="sort-arrow">{{ sortIndicator('event_name') }}</span>
+              </button>
+            </th>
+
+            <th [attr.aria-sort]="ariaSort('event_date')" style="width: 130px">
+              <button type="button" class="sort-btn" (click)="sortBy('event_date')">
+                Date <span class="sort-arrow">{{ sortIndicator('event_date') }}</span>
+              </button>
+            </th>
+
+            <th [attr.aria-sort]="ariaSort('status')" style="width: 110px">
+              <button type="button" class="sort-btn" (click)="sortBy('status')">
+                Status <span class="sort-arrow">{{ sortIndicator('status') }}</span>
+              </button>
+            </th>
+
+            <th [attr.aria-sort]="ariaSort('registration_count')" style="width: 120px">
+              <button type="button" class="sort-btn" (click)="sortBy('registration_count')">
+                Regs <span class="sort-arrow">{{ sortIndicator('registration_count') }}</span>
+              </button>
+            </th>
+
+            <th [attr.aria-sort]="ariaSort('tickets_sold')" style="width: 85px">
+              <button type="button" class="sort-btn" (click)="sortBy('tickets_sold')">
+                Tickets <span class="sort-arrow">{{ sortIndicator('tickets_sold') }}</span>
+              </button>
+            </th>
+
+            <th [attr.aria-sort]="ariaSort('current_amount')" style="width: 150px">
+              <button type="button" class="sort-btn" (click)="sortBy('current_amount')">
+                Raised <span class="sort-arrow">{{ sortIndicator('current_amount') }}</span>
+              </button>
+            </th>
+
+            <th style="text-align: right; width: 190px">Actions</th>
           </tr>
         </thead>
+
         <tbody>
-          @for (event of filtered(); track event.event_id) {
+          @for (event of visibleEvents(); track event.event_id) {
             <tr>
               <td class="num">{{ event.event_id }}</td>
 
               <td>
                 <div class="cell-name">{{ event.event_name }}</div>
-                <div class="cell-sub">
-                  {{ event.category_name }} · {{ event.location }}
-                </div>
+                <div class="cell-sub">{{ event.category_name }} · {{ event.location }}</div>
               </td>
 
               <td>{{ dateText(event.event_date) }}</td>
@@ -125,7 +204,25 @@
 
               <td class="num">{{ event.tickets_sold ?? 0 }}</td>
 
+              <td class="num">
+                @if (event.goal_amount > 0) {
+                  <div class="cell-name">{{ money(event.current_amount) }}</div>
+                  <div class="cell-sub">of {{ money(event.goal_amount) }}</div>
+                } @else {
+                  <span class="cell-sub">No target</span>
+                }
+              </td>
+
               <td class="cell-actions">
+                <a
+                  class="btn btn-sm btn-outline"
+                  [href]="publicSiteUrl + '/events/' + event.event_id"
+                  target="_blank"
+                  rel="noopener"
+                  title="Open this event on the public website"
+                >
+                  ↗
+                </a>
                 <a class="btn btn-sm btn-outline" [routerLink]="['/events', event.event_id, 'edit']">
                   Edit
                 </a>
@@ -144,9 +241,17 @@
 <!-- ===== Delete confirmation ===== -->
 @if (pendingDelete(); as target) {
   <div class="modal-backdrop" (click)="cancelDelete()">
-    <div class="modal" (click)="$event.stopPropagation()">
-      <h3>Delete this event?</h3>
-      <p>
+    <div
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="deleteDialogTitle"
+      aria-describedby="deleteDialogBody"
+      (click)="$event.stopPropagation()"
+    >
+      <h3 id="deleteDialogTitle">Delete this event?</h3>
+
+      <p id="deleteDialogBody">
         <strong>{{ target.event_name }}</strong> will be permanently removed.
         @if ((target.registration_count ?? 0) > 0) {
           <br /><br />
@@ -161,10 +266,18 @@
         <button type="button" class="btn btn-outline" (click)="cancelDelete()" [disabled]="deleting()">
           Cancel
         </button>
-        <button type="button" class="btn btn-primary" (click)="confirmDelete()" [disabled]="deleting()">
+        <button
+          #confirmDeleteButton
+          type="button"
+          class="btn btn-primary"
+          (click)="confirmDelete()"
+          [disabled]="deleting()"
+        >
           {{ deleting() ? 'Deleting…' : 'Yes, delete' }}
         </button>
       </div>
+
+      <p class="modal-hint">Press Esc to cancel.</p>
     </div>
   </div>
 }

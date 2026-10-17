@@ -1,6 +1,17 @@
-import { Component, OnInit, computed, effect, inject, input, signal } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+
+import { HasUnsavedChanges } from '../../core/services/unsaved-changes.guard';
 
 import {
   CharityEvent,
@@ -20,7 +31,7 @@ import { formatDate, formatDateTime, formatMoney, statusLabel } from '../../shar
   templateUrl: './event-form.html',
   styleUrl: './event-form.css',
 })
-export class EventForm implements OnInit {
+export class EventForm implements OnInit, HasUnsavedChanges {
   /** Present on /events/:id/edit, absent on /events/new. */
   readonly id = input<string | undefined>(undefined);
 
@@ -41,6 +52,9 @@ export class EventForm implements OnInit {
   readonly saving = signal(false);
   readonly error = signal('');
   readonly fieldErrors = signal<string[]>([]);
+
+  /** Set once a save has succeeded, so the route guard lets us leave. */
+  private readonly saved = signal(false);
 
   readonly statuses = EVENT_STATUSES;
   readonly statusText = statusLabel;
@@ -131,6 +145,8 @@ export class EventForm implements OnInit {
           organizer_contact: event.organizer_contact ?? '',
         });
 
+        // Populating the form programmatically is not an edit by the user.
+        this.form.markAsPristine();
         this.loading.set(false);
       },
       error: (err) => {
@@ -162,6 +178,7 @@ export class EventForm implements OnInit {
     request.subscribe({
       next: () => {
         this.saving.set(false);
+        this.saved.set(true);
         this.router.navigate(['/'], {
           queryParams: { saved: this.isEdit() ? 'updated' : 'created' },
         });
@@ -205,6 +222,24 @@ export class EventForm implements OnInit {
       image_url: (v.image_url ?? '').trim() || null,
       organizer_contact: (v.organizer_contact ?? '').trim() || null,
     };
+  }
+
+  // ---------- Guard hooks ----------
+
+  /**
+   * Required by unsavedChangesGuard. A form counts as "unsaved" only when the
+   * user has actually edited it and the save has not completed.
+   */
+  hasUnsavedChanges(): boolean {
+    return this.form.dirty && !this.saved();
+  }
+
+  /** Last line of defence: the browser's own leave-site prompt. */
+  @HostListener('window:beforeunload', ['$event'])
+  onBeforeUnload(event: BeforeUnloadEvent): void {
+    if (!this.hasUnsavedChanges()) return;
+    event.preventDefault();
+    event.returnValue = '';
   }
 
   // ---------- Template accessors ----------

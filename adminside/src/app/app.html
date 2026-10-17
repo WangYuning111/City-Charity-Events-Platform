@@ -6,11 +6,21 @@
       <span class="env">Admin</span>
     </a>
 
-    <nav class="admin-nav">
-      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+    <nav class="admin-nav" aria-label="Admin sections">
+      <a
+        routerLink="/"
+        [class.active]="!onCreateScreen()"
+        [attr.aria-current]="onCreateScreen() ? null : 'page'"
+      >
         Events
       </a>
-      <a routerLink="/events/new" routerLinkActive="active">New Event</a>
+      <a
+        routerLink="/events/new"
+        [class.active]="onCreateScreen()"
+        [attr.aria-current]="onCreateScreen() ? 'page' : null"
+      >
+        New Event
+      </a>
     </nav>
 
     <span class="spacer"></span>
