@@ -404,7 +404,7 @@ src/app/
 | `/events/new` | Create form |
 | `/events/:id/edit` | Edit form + that event's registrations |
 
-A few interaction details matter in day-to-day use: **column sorting** on seven fields (status sorts by lifecycle rather than alphabetically), **independent text / status / category filters** with a one-click reset, a **per-row shortcut** to the public page, a delete dialog that **moves focus to the confirm button and closes on `Esc`**, **auto-dismissing** confirmations, and a route guard that **refuses to discard a half-filled form**.
+A few interaction details matter in day-to-day use: **column sorting** on seven fields (status sorts by lifecycle rather than alphabetically), **independent text / status / category filters** with a one-click reset, **CSV export of exactly the rows on screen**, a **one-click suspend / reinstate control** that publishes or hides an event immediately, a **per-row shortcut** to the public page, a delete dialog that **moves focus to the confirm button and closes on `Esc`**, **auto-dismissing** confirmations, and a route guard that **refuses to discard a half-filled form**.
 
 ---
 
@@ -998,7 +998,7 @@ src/app/
 | `/events/new` | 新建表单 |
 | `/events/:id/edit` | 编辑表单 + 该活动的报名数据 |
 
-日常使用中真正影响效率的细节也已处理：**七列可排序**（状态按生命周期排序而非字母序）、**文本 / 状态 / 类别三个独立筛选**并支持一键重置、每行提供**跳转公开页**的快捷入口、删除弹窗**自动聚焦确认按钮并可 `Esc` 关闭**、成功提示**自动消失**，以及**离开半填表单时拦截**的路由守卫。
+日常使用中真正影响效率的细节也已处理：**七列可排序**（状态按生命周期排序而非字母序）、**文本 / 状态 / 类别三个独立筛选**并支持一键重置、**按当前筛选结果导出 CSV**、**一键暂停 / 恢复**活动并即时生效于公开站、每行提供**跳转公开页**的快捷入口、删除弹窗**自动聚焦确认按钮并可 `Esc` 关闭**、成功提示**自动消失**，以及**离开半填表单时拦截**的路由守卫。
 
 ---
 

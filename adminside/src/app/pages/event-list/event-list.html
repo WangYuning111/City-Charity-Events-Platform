@@ -189,7 +189,7 @@
               </button>
             </th>
 
-            <th style="text-align: right; width: 190px">Actions</th>
+            <th style="text-align: right; width: 265px">Actions</th>
           </tr>
         </thead>
 
@@ -239,6 +239,21 @@
                 <a class="btn btn-sm btn-outline" [routerLink]="['/events', event.event_id, 'edit']">
                   Edit
                 </a>
+                @if (canToggleStatus(event)) {
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline"
+                    (click)="toggleStatus(event)"
+                    [disabled]="statusBusy() === event.event_id"
+                    [title]="
+                      event.status === 'suspended'
+                        ? 'Publish this event again as upcoming'
+                        : 'Hide this event from the public site'
+                    "
+                  >
+                    {{ statusBusy() === event.event_id ? '…' : statusActionLabel(event) }}
+                  </button>
+                }
                 <button type="button" class="btn btn-sm btn-danger" (click)="askDelete(event)">
                   Delete
                 </button>

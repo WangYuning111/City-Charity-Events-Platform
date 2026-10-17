@@ -57,6 +57,7 @@ export class EventList implements OnInit {
 
   readonly pendingDelete = signal<CharityEvent | null>(null);
   readonly deleting = signal(false);
+  readonly statusBusy = signal<number | null>(null);
 
   readonly statusText = statusLabel;
   readonly dateText = formatDate;
@@ -244,6 +245,47 @@ export class EventList implements OnInit {
     const csv = toCsv(rows, EventList.CSV_COLUMNS);
     downloadCsv(`charity-events-${todayStamp()}.csv`, csv);
     this.setNotice(`Exported ${rows.length} event(s) to CSV.`);
+  }
+
+  // ---------- Inline status change ----------
+
+  /** A past event has already ended; suspending it would mean nothing. */
+  canToggleStatus(event: CharityEvent): boolean {
+    return event.status !== 'past';
+  }
+
+  statusActionLabel(event: CharityEvent): string {
+    return event.status === 'suspended' ? 'Reinstate' : 'Suspend';
+  }
+
+  /**
+   * Suspend or reinstate straight from the row.
+   *
+   * This is a partial update — only `status` is sent, and the API merges it
+   * into the existing record. Suspending removes the event from every public
+   * listing immediately, because visibility is a data-level rule.
+   */
+  toggleStatus(event: CharityEvent): void {
+    const next: EventStatus = event.status === 'suspended' ? 'upcoming' : 'suspended';
+
+    this.statusBusy.set(event.event_id);
+    this.error.set('');
+
+    this.adminService.update(event.event_id, { status: next }).subscribe({
+      next: () => {
+        this.statusBusy.set(null);
+        this.setNotice(
+          next === 'suspended'
+            ? `"${event.event_name}" suspended — it is now hidden from the public site.`
+            : `"${event.event_name}" reinstated as an upcoming event.`
+        );
+        this.load();
+      },
+      error: (err) => {
+        this.statusBusy.set(null);
+        this.error.set(extractApiError(err, 'Unable to change the event status.'));
+      },
+    });
   }
 
   // ---------- Feedback ----------
