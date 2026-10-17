@@ -20,6 +20,7 @@ import { AdminEventService } from '../../core/services/admin-event.service';
 import { extractApiError } from '../../core/services/api-error';
 import { PUBLIC_SITE_URL } from '../../core/config/api.config';
 import { formatDate, formatMoney, statusLabel } from '../../shared/format';
+import { CsvColumn, downloadCsv, toCsv, todayStamp } from '../../shared/csv';
 
 type SortKey =
   | 'event_id'
@@ -66,6 +67,25 @@ export class EventList implements OnInit {
     viewChild<ElementRef<HTMLButtonElement>>('confirmDeleteButton');
 
   private noticeTimer?: ReturnType<typeof setTimeout>;
+
+  /** Column set for the CSV export — one definition, used by the button only. */
+  private static readonly CSV_COLUMNS: CsvColumn<CharityEvent>[] = [
+    { header: 'ID', value: (e) => e.event_id },
+    { header: 'Event name', value: (e) => e.event_name },
+    { header: 'Category', value: (e) => e.category_name },
+    { header: 'Organisation', value: (e) => e.org_name ?? '' },
+    { header: 'Date', value: (e) => String(e.event_date).substring(0, 10) },
+    { header: 'Time', value: (e) => e.event_time },
+    { header: 'Venue', value: (e) => e.location },
+    { header: 'Address', value: (e) => e.address ?? '' },
+    { header: 'Status', value: (e) => e.status },
+    { header: 'Ticket price', value: (e) => Number(e.ticket_price).toFixed(2) },
+    { header: 'Fundraising goal', value: (e) => Number(e.goal_amount).toFixed(2) },
+    { header: 'Amount raised', value: (e) => Number(e.current_amount).toFixed(2) },
+    { header: 'Registrations', value: (e) => e.registration_count ?? 0 },
+    { header: 'Tickets sold', value: (e) => e.tickets_sold ?? 0 },
+    { header: 'Max participants', value: (e) => e.max_participants ?? '' },
+  ];
 
   /** Ranking used so the status column sorts by lifecycle, not alphabetically. */
   private static readonly STATUS_RANK: Record<EventStatus, number> = {
@@ -211,6 +231,19 @@ export class EventList implements OnInit {
     this.search.set('');
     this.statusFilter.set('');
     this.categoryFilter.set('');
+  }
+
+  /**
+   * Export exactly what is on screen. Staff usually filter first, so exporting
+   * the filtered and sorted view is more useful than exporting the raw table.
+   */
+  exportCsv(): void {
+    const rows = this.visibleEvents();
+    if (rows.length === 0) return;
+
+    const csv = toCsv(rows, EventList.CSV_COLUMNS);
+    downloadCsv(`charity-events-${todayStamp()}.csv`, csv);
+    this.setNotice(`Exported ${rows.length} event(s) to CSV.`);
   }
 
   // ---------- Feedback ----------

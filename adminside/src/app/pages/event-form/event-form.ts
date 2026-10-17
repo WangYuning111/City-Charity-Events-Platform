@@ -12,10 +12,12 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
 import { HasUnsavedChanges } from '../../core/services/unsaved-changes.guard';
+import { CsvColumn, downloadCsv, toCsv, todayStamp } from '../../shared/csv';
 
 import {
   CharityEvent,
   EventCategory,
+  EventRegistration,
   EVENT_STATUSES,
   EventPayload,
   EventStatus,
@@ -222,6 +224,28 @@ export class EventForm implements OnInit, HasUnsavedChanges {
       image_url: (v.image_url ?? '').trim() || null,
       organizer_contact: (v.organizer_contact ?? '').trim() || null,
     };
+  }
+
+  // ---------- CSV export ----------
+
+  private static readonly REGISTRATION_COLUMNS: CsvColumn<EventRegistration>[] = [
+    { header: 'Reference', value: (r) => r.registration_id },
+    { header: 'Attendee', value: (r) => r.attendee_name },
+    { header: 'Email', value: (r) => r.attendee_email },
+    { header: 'Phone', value: (r) => r.attendee_phone ?? '' },
+    { header: 'Tickets', value: (r) => r.tickets_purchased },
+    { header: 'Registered', value: (r) => r.registration_date },
+    { header: 'Special requests', value: (r) => r.special_requests ?? '' },
+  ];
+
+  /** Download this event's attendee list — useful for door check-in. */
+  exportRegistrations(): void {
+    const event = this.existing();
+    const rows = event?.registrations ?? [];
+    if (!event || rows.length === 0) return;
+
+    const csv = toCsv(rows, EventForm.REGISTRATION_COLUMNS);
+    downloadCsv(`registrations-event-${event.event_id}-${todayStamp()}.csv`, csv);
   }
 
   // ---------- Guard hooks ----------

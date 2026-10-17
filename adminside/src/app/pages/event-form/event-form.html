@@ -355,9 +355,20 @@
             {{ ev.registrations?.length ?? 0 }}
           </span>
         </h2>
-        <span class="small text-muted">
-          {{ ev.tickets_sold ?? 0 }} ticket(s) sold · newest first
-        </span>
+        <div class="row">
+          <span class="small text-muted">
+            {{ ev.tickets_sold ?? 0 }} ticket(s) sold · newest first
+          </span>
+          <button
+            type="button"
+            class="btn btn-outline btn-sm"
+            (click)="exportRegistrations()"
+            [disabled]="!ev.registrations || ev.registrations.length === 0"
+            title="Download this attendee list as a CSV file"
+          >
+            ⤓ Export CSV
+          </button>
+        </div>
       </div>
 
       @if (!ev.registrations || ev.registrations.length === 0) {
