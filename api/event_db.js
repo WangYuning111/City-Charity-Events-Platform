@@ -5,13 +5,23 @@
 
 const mysql = require('mysql2/promise');
 
-// MySQL connection pool configuration
+// ------------------------------------------------------------
+// Connection settings are read from the environment so that the
+// same source file works in every place it has to run:
+//
+//   local dev  -> api/.env   (copy .env.example, fill in root / '')
+//   cPanel     -> Setup Node.js App > Environment variables
+//
+// Nothing secret is committed to Git. The fallbacks below keep the
+// original local defaults (root, empty password) so an existing
+// developer machine needs no .env file at all.
+// ------------------------------------------------------------
 const pool = mysql.createPool({
-    host: 'localhost',
-    port: 3306,
-    user: 'root',
-    password: '',
-    database: 'charityevents_db',
+    host: process.env.DB_HOST || 'localhost',
+    port: Number(process.env.DB_PORT || 3306),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'charityevents_db',
     charset: 'utf8mb4',
     // Return DATE / DATETIME / TIMESTAMP columns as plain strings.
     // Without this, mysql2 converts a DATE such as '2026-10-18' into a JS Date

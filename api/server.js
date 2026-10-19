@@ -4,6 +4,10 @@
 // Assessment 3: full C.R.U.D. + registrations + weather proxy
 // ============================================
 
+// Load .env before anything reads process.env (no-op when the file is absent,
+// e.g. on cPanel where the variables are injected by the Node.js App panel).
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const { testConnection } = require('./event_db');
