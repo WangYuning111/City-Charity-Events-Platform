@@ -3,7 +3,18 @@
 // Creates and populates charityevents.db with sample data
 // ============================================
 
-const Database = require('better-sqlite3');
+// better-sqlite3 is an optional LOCAL convenience only (the real database is
+// MySQL). It is deliberately NOT a runtime dependency, because it is a native
+// module that cannot be compiled on most shared-hosting Node setups.
+let Database;
+try {
+    Database = require('better-sqlite3');
+} catch (err) {
+    console.error('better-sqlite3 is not installed.');
+    console.error('This script is an optional offline demo - install it with:');
+    console.error('    npm install --no-save better-sqlite3');
+    process.exit(1);
+}
 const path = require('path');
 const fs = require('fs');
 
