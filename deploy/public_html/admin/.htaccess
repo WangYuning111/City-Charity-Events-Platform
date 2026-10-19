@@ -1,0 +1,25 @@
+# ------------------------------------------------------------------
+# Admin console (Angular SPA) served from the /admin/ subdirectory.
+#
+# Upload this file to  public_html/admin/.htaccess
+# Build requirement:  npm run build -- --base-href /admin/
+# ------------------------------------------------------------------
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /admin/
+
+    # Real files (main-*.js, styles-*.css) are served directly.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Admin routes (/admin/events, /admin/events/3/edit) -> admin index.html
+    RewriteRule ^ /admin/index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+    <FilesMatch "index\.html$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </FilesMatch>
+</IfModule>

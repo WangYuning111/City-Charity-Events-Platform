@@ -588,11 +588,23 @@ cd adminside  && npm run build     # → dist/adminside/browser
 
 ### Deploying to SCU cPanel
 
-1. Upload the API, then run `npm install --omit=dev` and start it via the cPanel Node.js application manager (or `Passenger`).
-2. Import `charityevents_db.sql` through phpMyAdmin.
-3. Update `api/event_db.js` with the cPanel MySQL credentials.
-4. Upload each `dist/*/browser` folder to its own document root.
-5. Edit `clientside/src/app/core/config/api.config.ts` and `adminside/src/app/core/config/api.config.ts` so `API_BASE` points at the deployed API, then rebuild — or deploy the API on the same domain and keep the relative `/api`.
+Each student deploys the **whole stack** — database, API and both front ends — to their **own** cPanel account. The source is shared; only the credentials differ. One API codebase, two deployments, no API keys (Open-Meteo is free and keyless).
+
+**Layout** — everything on one domain, so `API_BASE` stays the relative `/api` and there is no CORS to configure:
+
+| URL | Serves | Uploaded from |
+|---|---|---|
+| `/` | public website | `dist/clientside/browser` |
+| `/admin/` | admin console | `dist/adminside/browser` (built with `--base-href /admin/`) |
+| `/api/...` | REST API | `api/` through *Setup Node.js App* |
+
+1. **Database** — create a database and a user in *MySQL Databases* (grant ALL PRIVILEGES), then import **`database/charityevents_cpanel.sql`** in phpMyAdmin. Use that copy, not the original: the hosting user has no `CREATE DATABASE` privilege, so the `DROP DATABASE` / `CREATE DATABASE` statements at the top of the original file abort the import.
+2. **API** — upload `api/` (without `node_modules/` or `*.db`) to a directory **outside** `public_html`, e.g. `~/charity-api`. In *Setup Node.js App* create an app with root `charity-api`, application URL `api`, startup file `server.js`, mode Production, then add `DB_HOST`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` as environment variables. `event_db.js` reads them from `process.env` (with local defaults), so no credential is committed. Run *NPM Install*, *Restart*, and check `/api/health`.
+3. **Front ends** — build locally (never on the host), then upload the **contents** of each `dist/*/browser` folder to `public_html/` and `public_html/admin/`.
+4. **Routing** — copy `deploy/public_html/.htaccess` to `public_html/.htaccess` and `deploy/public_html/admin/.htaccess` to `public_html/admin/.htaccess`. Without them, a refresh on `/events/3` or `/admin/events/3/edit` returns 404 and `/api` requests would be swallowed by the SPA rewrite.
+5. **Pointers** — set `PUBLIC_SITE_URL` in `adminside/src/app/core/config/api.config.ts` to the deployed public URL and rebuild that app; run *AutoSSL* and confirm both sites load over `https`.
+
+> `better-sqlite3` is no longer a runtime dependency, so nothing native has to compile on the host. `node db_init.js` remains available as an optional offline demo (`npm install --no-save better-sqlite3`).
 
 > Each student must deploy to their **own** cPanel account.
 
@@ -1182,11 +1194,23 @@ cd adminside  && npm run build     # → dist/adminside/browser
 
 ### 部署到 SCU cPanel
 
-1. 先上传 API，执行 `npm install --omit=dev`，通过 cPanel 的 Node.js 应用管理器（或 Passenger）启动。
-2. 通过 phpMyAdmin 导入 `charityevents_db.sql`。
-3. 用 cPanel 的 MySQL 凭据更新 `api/event_db.js`。
-4. 分别把 `dist/*/browser` 上传到各自的站点根目录。
-5. 修改 `clientside/src/app/core/config/api.config.ts` 与 `adminside/src/app/core/config/api.config.ts` 中的 `API_BASE` 指向已部署的 API 后重新构建；若 API 与前端同域，则保持相对路径 `/api` 即可。
+每人把**整套系统**（数据库 + API + 两个前端）部署到**自己**的 cPanel 账号。源码共用，只有凭据不同：一套 API 代码、两份部署、零个 API key（Open-Meteo 免费且免注册）。
+
+**目录布局** —— 全部放在同一域名下，`API_BASE` 保持相对路径 `/api`，不涉及 CORS：
+
+| 地址 | 内容 | 上传来源 |
+|---|---|---|
+| `/` | 公众网站 | `dist/clientside/browser` |
+| `/admin/` | 管理后台 | `dist/adminside/browser`（用 `--base-href /admin/` 构建） |
+| `/api/...` | REST API | `api/`，经 *Setup Node.js App* 运行 |
+
+1. **数据库** —— 在 *MySQL Databases* 建库、建用户并授予 ALL PRIVILEGES，然后用 phpMyAdmin 导入 **`database/charityevents_cpanel.sql`**。必须用这份副本：主机用户没有 `CREATE DATABASE` 权限，原文件顶部的 `DROP DATABASE` / `CREATE DATABASE` 会让导入直接失败。
+2. **API** —— 把 `api/`（不含 `node_modules/`、`*.db`）上传到 **`public_html` 之外**的目录，例如 `~/charity-api`。在 *Setup Node.js App* 中创建应用：根目录 `charity-api`、应用 URL `api`、启动文件 `server.js`、模式 Production，并把 `DB_HOST`、`DB_USER`、`DB_PASSWORD`、`DB_NAME` 设为环境变量。`event_db.js` 通过 `process.env` 读取（带本地默认值），凭据不进入 Git。执行 *NPM Install*、*Restart*，访问 `/api/health` 验证。
+3. **前端** —— 在本地构建（不要在服务器上构建），再把两个 `dist/*/browser` **目录内的内容**分别上传到 `public_html/` 与 `public_html/admin/`。
+4. **路由重写** —— 把 `deploy/public_html/.htaccess` 复制为 `public_html/.htaccess`，把 `deploy/public_html/admin/.htaccess` 复制为 `public_html/admin/.htaccess`。缺少它们时，刷新 `/events/3` 或 `/admin/events/3/edit` 会 404，且 `/api` 请求会被 SPA 重写吞掉。
+5. **指向配置** —— 把 `adminside/src/app/core/config/api.config.ts` 的 `PUBLIC_SITE_URL` 改成已部署的公众站地址并重新构建；执行 *AutoSSL*，确认两个站点均可通过 `https` 访问。
+
+> `better-sqlite3` 已不再是运行时依赖，主机上无需编译任何原生模块。`node db_init.js` 仍作为可选的离线演示保留（`npm install --no-save better-sqlite3`）。
 
 > 每位学生必须部署到**自己**的 cPanel 账号。
 

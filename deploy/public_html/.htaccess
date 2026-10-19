@@ -1,0 +1,45 @@
+# ------------------------------------------------------------------
+# Public website (Angular SPA) + cPanel Node.js API on ONE domain
+#   /          -> clientside   (dist/clientside/browser)
+#   /admin/     -> adminside   (dist/adminside/browser, --base-href /admin/)
+#   /api/...    -> Node.js App (Setup Node.js App, Application URL = api)
+#
+# Upload this file to  public_html/.htaccess
+# ------------------------------------------------------------------
+
+# The document root is publicly browsable by default on this host
+# (https://24832834.it.scu.edu.au/ currently returns "Index of /").
+# Remove the next line only if it triggers a 500 (some hosts disallow Options).
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # 1. /api/** is served by the Node.js application. Never rewrite it,
+    #    otherwise GET /api/events would return index.html and every fetch
+    #    in the two Angular apps would fail with a JSON parse error.
+    RewriteCond %{REQUEST_URI} ^/api(/|$) [NC]
+    RewriteRule ^ - [L]
+
+    # 2. /admin/** is handled by public_html/admin/.htaccess
+    RewriteCond %{REQUEST_URI} ^/admin(/|$) [NC]
+    RewriteRule ^ - [L]
+
+    # 3. Real files and directories (main-*.js, styles-*.css, assets/) pass through.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # 4. Everything else is an Angular client-side route
+    #    (/search, /events/3, /events/3/register) -> index.html
+    RewriteRule ^ index.html [L]
+</IfModule>
+
+# index.html must never be cached: after a redeploy it references new hashed
+# bundles, and a stale cached index.html would point at files that no longer exist.
+<IfModule mod_headers.c>
+    <FilesMatch "index\.html$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </FilesMatch>
+</IfModule>

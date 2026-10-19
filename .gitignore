@@ -6,10 +6,17 @@ dist/
 .angular/
 *.tsbuildinfo
 
+# ===== Deployment packages (generated, not source) =====
+deploy/out/
+
 # ===== Runtime databases (MySQL is the production database) =====
 *.db
 *.db-shm
 *.db-wal
+
+# ===== Environment / credentials =====
+.env
+api/.env
 
 # ===== Logs & local tooling =====
 *.log
