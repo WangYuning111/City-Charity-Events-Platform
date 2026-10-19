@@ -10,6 +10,9 @@ export const API_BASE = '/api';
 /**
  * Where the public website is served. Used by the "view on site" shortcut in
  * the event list so staff can jump from the console to the visitor-facing page.
- * Update this when the public site is deployed to its own domain.
+ *
+ * Deployed target (SCU cPanel): the public Angular app sits at the domain root
+ * and this console at /admin/, both served from public_html with the API on
+ * /api. No trailing slash - callers append /events/:id themselves.
  */
-export const PUBLIC_SITE_URL = 'http://localhost:4200';
+export const PUBLIC_SITE_URL = 'https://24832834.it.scu.edu.au';

@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
+import { PUBLIC_SITE_URL } from './core/config/api.config';
 
 @Component({
   selector: 'app-root',
@@ -23,6 +24,9 @@ export class App {
 
   /** Path only — query strings such as ?saved=created must not affect the nav. */
   private readonly path = computed(() => this.url().split('?')[0].split('#')[0]);
+
+  /** Public website address, so the header link follows the deployment. */
+  readonly publicSiteUrl = PUBLIC_SITE_URL;
 
   readonly onDashboard = computed(() => this.path() === '/');
   readonly onCreate = computed(() => this.path().startsWith('/events/new'));
