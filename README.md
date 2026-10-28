@@ -383,6 +383,8 @@ Error handling is centralised per application in `extractApiError()`, which pref
 | `/events/new` | Create form |
 | `/events/:id/edit` | Edit form + that event's registrations |
 
+Both form routes carry `canDeactivate: [unsavedChangesGuard]`, so leaving a half-filled form asks for confirmation instead of silently discarding the edits.
+
 ---
 
 ## 9. Weather Integration
@@ -460,12 +462,18 @@ cp .env.example .env     # optional locally: defaults already match root / empty
 node server.js
 ```
 
-Expected output:
+Expected output — the connection probe from `event_db.js`, then the server banner from `server.js`:
 
 ```
 MySQL database connected successfully!
   Events: 10 | Categories: 8
+========================================
+  City Charity Events - API Server
+========================================
   API:       http://localhost:3000/api
+  Client:    http://localhost:4200  (ng serve clientside)
+  Admin:     http://localhost:4300  (ng serve adminside)
+========================================
 ```
 
 ### 3 · Start the public website
