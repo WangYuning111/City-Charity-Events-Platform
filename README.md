@@ -56,6 +56,8 @@ Every figure, list and confirmation on screen is retrieved from MySQL through th
 | REST API | https://24832834.it.scu.edu.au/api |
 | Health probe | https://24832834.it.scu.edu.au/api/health |
 
+> **TLS status:** the host name is proxied through the university's Cloudflare zone, whose certificate currently covers `it.scu.edu.au` only (SAN `DNS:it.scu.edu.au`, no wildcard). Until IT issues a certificate for `24832834.it.scu.edu.au`, browsers abort the handshake with `ERR_SSL_VERSION_OR_CIPHER_MISMATCH`. The deployed files and database are unaffected; only public HTTPS access is pending.
+
 All three run under one cPanel account: the API is a Node.js application whose base URI is `/api`, and the two Angular builds are uploaded as static files to `public_html` and `public_html/admin`. See [Section 13](#13-deployment-to-cpanel).
 
 ---
