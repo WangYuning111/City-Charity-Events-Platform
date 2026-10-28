@@ -2,6 +2,8 @@
 
 **A three-tier dynamic web system — MySQL · Node.js/Express REST API · two Angular 22 applications · Open-Meteo weather integration**
 
+> Coursework deliverable for **PROG2002 Web Development II** — one MySQL schema, one REST contract, three independently deployable applications. Chinese readers can jump straight to [中文速览](#中文速览).
+
 [![Angular](https://img.shields.io/badge/Angular-22.2-DD0031?logo=angular&logoColor=white)](https://angular.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A524.15-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
@@ -30,6 +32,8 @@
 - [15. Manual Test Checklist](#15-manual-test-checklist)
 - [16. Limitations and Roadmap](#16-limitations-and-roadmap)
 - [17. Screenshots](#17-screenshots)
+- [中文速览](#中文速览) — condensed overview in Chinese
+- [Author](#author)
 
 ---
 
@@ -251,7 +255,7 @@ The complete schema **and** data live in one importable file: `database/charitye
 ## 7. API Reference
 
 Base URL (development): `http://localhost:3000/api`
-Base URL (deployed): `https://24832834.it.scu.edu.au/api`
+Base URL (deployed): `https://24832834.it.scu.edu.au/api` — see the [TLS status note](#2-deployment) before relying on this host name.
 
 ### Events
 
@@ -428,9 +432,16 @@ The widget degrades gracefully: no coordinates → neutral notice; upstream fail
 
 ### Prerequisites
 
-- **Node.js ≥ 24.15** (Angular 22 CLI requires v24.15.0 / v22.22.3 / v26.0.0)
+- **Node.js** — the Angular 22 CLI accepts `v24.15.0+`, `v22.22.3+` or `v26.0.0+`
 - **MySQL 8.x** running locally
-- npm 11+
+- **npm 11+**
+
+### Clone
+
+```bash
+git clone https://github.com/WangYuning111/City-Charity-Events-Platform.git
+cd City-Charity-Events-Platform
+```
 
 ### 1 · Create and seed the database
 
@@ -519,7 +530,7 @@ A relative path works in development (through `proxy.conf.json`) and in producti
 export const PUBLIC_SITE_URL = 'https://24832834.it.scu.edu.au';
 ```
 
-Used by the "view public site" shortcut and the per-row link to the public page.
+Used by the "view public site" shortcut and the per-row link to the public page. The host's certificate is still pending, as noted in [Section 2](#2-deployment).
 
 ---
 
@@ -585,7 +596,7 @@ Copy `deploy/public_html/.htaccess` to `public_html/.htaccess` and `deploy/publi
 │   ├── charityevents_db.sql      # full schema + seed data
 │   └── charityevents_cpanel.sql  # import-ready copy for shared hosting
 ├── deploy/
-│   ├── out/                      # build packages for upload
+│   ├── out/                      # build packages for upload (git-ignored)
 │   └── public_html/              # .htaccess files (root + /admin)
 ├── docs/screenshots/a3/          # documentation captures
 └── archive/a2-vanilla-client/    # previous iteration, kept for reference
@@ -608,6 +619,24 @@ Copy `deploy/public_html/.htaccess` to `public_html/.htaccess` and `deploy/publi
 | Refresh `/events/3` | Page renders (SPA fallback) |
 | Refresh `/admin/events/3/edit` | Page renders |
 | `GET /api/weather` with valid coordinates | Seven-day forecast |
+
+### Public site in a browser
+
+| Step | Expected |
+|---|---|
+| Open `/` | Hero, live statistics and the event grid all come from the API |
+| Search with location + category + free-only | Filtered count, and an empty state when nothing matches |
+| Open an event and register | Confirmation receipt; the remaining-seat count drops on the detail page |
+| Register the same email for the same event again | Inline 409 message, no duplicate row |
+
+### Admin console in a browser
+
+| Step | Expected |
+|---|---|
+| Open `/admin/` | KPIs, status mix and recent registrations |
+| Filter, sort and export the event list | Rows, statistics and the CSV agree with the active filters |
+| Delete an event that has registrations | Blocked dialog quoting registration and ticket counts |
+| Suspend, then reinstate an event | Badge changes in the list and on the public site |
 
 ---
 
@@ -635,6 +664,8 @@ Copy `deploy/public_html/.htaccess` to `public_html/.htaccess` and `deploy/publi
 |---|---|
 | ![Dashboard](docs/screenshots/a3/a3-08-admin-dashboard.png) | ![Blocked](docs/screenshots/a3/a3-07-admin-delete-blocked.png) |
 
+The six captures above come from the final build. The rest of `docs/screenshots/` adds the home event grid (`a3-02-home-events.png`), the admin list (`a3-06-admin-list.png`), and earlier captures of search, detail, registration, Postman and the database schema.
+
 ---
 
 ## 中文速览
@@ -643,7 +674,7 @@ Copy `deploy/public_html/.htaccess` to `public_html/.htaccess` and `deploy/publi
 - **数据库**：4 张表（组织结构/类别/活动/报名），第三范式；`UNIQUE(event_id, attendee_email)` 保证每人每活动只报一次，`CHECK` 约束票数，外键 `RESTRICT` 保证有报名不可删除。
 - **接口**：活动完整 C.R.U.D.、报名创建与查询、组织查询、天气代理；统一响应信封与 200/201/400/404/409/502 语义。
 - **前端**：Angular 22 无 Zone + 信号、独立组件、懒加载、响应式表单；公众站四页，后台仪表盘/列表/新建/编辑。
-- **部署**：cPanel 上 API 挂在 `/api`（Node.js 应用），两个静态构建分别放在 `public_html` 与 `/admin/`，由两份 `.htaccess` 完成 SPA 回退。
+- **部署**：cPanel 上 API 挂在 `/api`（Node.js 应用），两个静态构建分别放在 `public_html` 与 `/admin/`，由两份 `.htaccess` 完成 SPA 回退；`24832834.it.scu.edu.au` 的证书尚未覆盖该子域，需 IT 签发后才能公开访问（见 [第 2 节](#2-deployment)）。
 - **本地启动**：导入 `database/charityevents_db.sql` → `cd api && node server.js` → 两个前端各自 `npm install && npm start`。
 
 ---
