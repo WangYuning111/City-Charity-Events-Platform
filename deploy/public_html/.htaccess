@@ -8,7 +8,7 @@
 # ------------------------------------------------------------------
 
 # The document root is publicly browsable by default on this host
-# (https://24832834.it.scu.edu.au/ currently returns "Index of /").
+# (an unconfigured document root otherwise answers with "Index of /").
 # Remove the next line only if it triggers a 500 (some hosts disallow Options).
 Options -Indexes
 

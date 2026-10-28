@@ -24,8 +24,8 @@ api/.env
 .playwright/
 
 # ===== Assessment material (not for upload) =====
-PROG2002*.pdf
-PROG2002*.docx
+*.pdf
+*.docx
 项目要求与报告模板.md
 
 # ===== OS files =====

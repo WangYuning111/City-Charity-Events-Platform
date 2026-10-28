@@ -2,7 +2,7 @@
 
 **A three-tier dynamic web system — MySQL · Node.js/Express REST API · two Angular 22 applications · Open-Meteo weather integration**
 
-> Coursework deliverable for **PROG2002 Web Development II** — one MySQL schema, one REST contract, three independently deployable applications.
+> One MySQL schema, one REST contract, three independently deployable applications.
 >
 > **English** · [中文完整版 / Chinese version](#城市慈善活动管理平台)
 
@@ -33,7 +33,7 @@
 - [14. Project Structure](#14-project-structure)
 - [15. Manual Test Checklist](#15-manual-test-checklist)
 - [16. Limitations and Roadmap](#16-limitations-and-roadmap)
-- [17. Screenshots](#17-screenshots)
+- [17. Visual walkthrough](#17-visual-walkthrough)
 - [中文版 / Chinese version](#城市慈善活动管理平台)
 - [Author](#author--作者)
 
@@ -55,16 +55,18 @@ Every figure, list and confirmation on screen is retrieved from MySQL through th
 
 ## 2. Deployment
 
-| Application | URL |
-|---|---|
-| Public website | https://24832834.it.scu.edu.au/ |
-| Admin console | https://24832834.it.scu.edu.au/admin/ |
-| REST API | https://24832834.it.scu.edu.au/api |
-| Health probe | https://24832834.it.scu.edu.au/api/health |
+All three applications are served from a single origin. Paths are listed rather than host names, so the repository stays deployment-agnostic.
 
-> **TLS status:** the host name is proxied through the university's Cloudflare zone, whose certificate currently covers `it.scu.edu.au` only (SAN `DNS:it.scu.edu.au`, no wildcard). Until IT issues a certificate for `24832834.it.scu.edu.au`, browsers abort the handshake with `ERR_SSL_VERSION_OR_CIPHER_MISMATCH`. The deployed files and database are unaffected; only public HTTPS access is pending.
+| Application | Path | Served from |
+|---|---|---|
+| Public website | `/` | `public_html` (static build) |
+| Admin console | `/admin/` | `public_html/admin` (static build, `--base-href /admin/`) |
+| REST API | `/api` | Node.js application (*Setup Node.js App*) |
+| Health probe | `/api/health` | Node.js application |
 
-All three run under one cPanel account: the API is a Node.js application whose base URI is `/api`, and the two Angular builds are uploaded as static files to `public_html` and `public_html/admin`. See [Section 13](#13-deployment-to-cpanel).
+> **HTTPS note:** the host serving this build must present a certificate covering the exact host name in use. A certificate issued for the parent domain only — without a wildcard SAN — makes browsers abort the handshake with `ERR_SSL_VERSION_OR_CIPHER_MISMATCH`, even though the files and the database would be perfectly reachable once TLS is fixed. Check the certificate before assuming the deployment failed.
+
+All three run under one shared-hosting account: the API is a Node.js application whose base URI is `/api`, and the two Angular builds are uploaded as static files to `public_html` and `public_html/admin`. See [Section 13](#13-deployment-to-cpanel).
 
 ---
 
@@ -257,7 +259,7 @@ The complete schema **and** data live in one importable file: `database/charitye
 ## 7. API Reference
 
 Base URL (development): `http://localhost:3000/api`
-Base URL (deployed): `https://24832834.it.scu.edu.au/api` — see the [TLS status note](#2-deployment) before relying on this host name.
+Base URL (deployed): `https://<your-domain>/api` — same-origin deployment, so both front ends keep using the relative `/api`.
 
 ### Events
 
@@ -537,10 +539,10 @@ A relative path works in development (through `proxy.conf.json`) and in producti
 
 ```ts
 // adminside/src/app/core/config/api.config.ts
-export const PUBLIC_SITE_URL = 'https://24832834.it.scu.edu.au';
+export const PUBLIC_SITE_URL = 'http://localhost:4200';
 ```
 
-Used by the "view public site" shortcut and the per-row link to the public page. The host's certificate is still pending, as noted in [Section 2](#2-deployment).
+Used by the "view public site" shortcut and the per-row link to the public page. It defaults to the dev server, so no deployed host name lives in the source; point it at the production origin before a release build.
 
 ---
 
@@ -660,21 +662,57 @@ Copy `deploy/public_html/.htaccess` to `public_html/.htaccess` and `deploy/publi
 
 ---
 
-## 17. Screenshots
+## 17. Visual walkthrough
 
-| Public home | Event detail with registrations |
+Eighteen captures, all under `docs/screenshots/`. They follow the visitor journey first, then the staff console, then the API and database, and finally the earlier build kept for comparison.
+
+### Visitor journey — final build
+
+| Landing page: hero and live counters | Event grid with status badges and funding progress |
 |---|---|
-| ![Home](docs/screenshots/a3/a3-01-home.png) | ![Detail](docs/screenshots/a3/a3-04-detail.png) |
+| ![Home hero](docs/screenshots/a3/a3-01-home.png) | ![Home events](docs/screenshots/a3/a3-02-home-events.png) |
 
-| Search with filters | Registration confirmed |
+| Search results, matched term highlighted | Event detail: organiser, progress, registrations |
 |---|---|
-| ![Search](docs/screenshots/a3/a3-03-search.png) | ![Register](docs/screenshots/a3/a3-05-register-success.png) |
+| ![Search](docs/screenshots/a3/a3-03-search.png) | ![Detail](docs/screenshots/a3/a3-04-detail.png) |
 
-| Admin dashboard | Delete blocked by the integrity rule |
+| Registration confirmed |
+|---|
+| ![Registration confirmed](docs/screenshots/a3/a3-05-register-success.png) |
+
+### Staff console — final build
+
+| Dashboard: KPIs, status mix, latest registrations | Event list: filters, sorting, CSV, suspend, edit, delete |
 |---|---|
-| ![Dashboard](docs/screenshots/a3/a3-08-admin-dashboard.png) | ![Blocked](docs/screenshots/a3/a3-07-admin-delete-blocked.png) |
+| ![Dashboard](docs/screenshots/a3/a3-08-admin-dashboard.png) | ![Admin list](docs/screenshots/a3/a3-06-admin-list.png) |
 
-The six captures above come from the final build. The rest of `docs/screenshots/` adds the home event grid (`a3-02-home-events.png`), the admin list (`a3-06-admin-list.png`), and earlier captures of search, detail, registration, Postman and the database schema.
+| Delete blocked by the integrity rule (HTTP 409) |
+|---|
+| ![Delete blocked](docs/screenshots/a3/a3-07-admin-delete-blocked.png) |
+
+### API and database
+
+| Search endpoint exercised in Postman | Schema and seed data in MySQL |
+|---|---|
+| ![Postman](docs/screenshots/07-postman-search.png) | ![Schema](docs/screenshots/08-database-schema.png) |
+
+### Earlier build — complete visitor flow
+
+| Landing hero | Event listing |
+|---|---|
+| ![Hero](docs/screenshots/01a-home-page-hero.png) | ![Events](docs/screenshots/01b-home-page-events.png) |
+
+| About section | Search filters |
+|---|---|
+| ![About](docs/screenshots/01c-home-page-about.png) | ![Filters](docs/screenshots/02-search-filters.png) |
+
+| Search results | Empty state |
+|---|---|
+| ![Results](docs/screenshots/03-search-results.png) | ![Empty state](docs/screenshots/04-search-empty-state.png) |
+
+| Event detail | Registration dialog |
+|---|---|
+| ![Detail](docs/screenshots/05-event-detail.png) | ![Registration dialog](docs/screenshots/06-register-modal.png) |
 
 ---
 
@@ -682,7 +720,7 @@ The six captures above come from the final build. The rest of `docs/screenshots/
 
 **一套三层架构的动态网站系统 —— MySQL · Node.js/Express REST 接口 · 两个 Angular 22 应用 · Open-Meteo 天气集成**
 
-> PROG2002 Web Development II 课程作业。一个 MySQL 数据库、一套 REST 契约、三个可独立部署的应用。
+> 一个 MySQL 数据库、一套 REST 契约、三个可独立部署的应用。
 >
 > [中文](#城市慈善活动管理平台) · **English version:** [City Charity Events Platform](#city-charity-events-platform)
 
@@ -706,7 +744,7 @@ The six captures above come from the final build. The rest of `docs/screenshots/
 - [14. 项目结构](#14-项目结构)
 - [15. 人工测试清单](#15-人工测试清单)
 - [16. 局限与后续规划](#16-局限与后续规划)
-- [17. 界面截图](#17-界面截图)
+- [17. 界面演示](#17-界面演示)
 
 ---
 
@@ -726,16 +764,18 @@ The six captures above come from the final build. The rest of `docs/screenshots/
 
 ## 2. 部署地址
 
-| 应用 | 地址 |
-|---|---|
-| 公众站 | https://24832834.it.scu.edu.au/ |
-| 后台管理 | https://24832834.it.scu.edu.au/admin/ |
-| REST 接口 | https://24832834.it.scu.edu.au/api |
-| 健康检查 | https://24832834.it.scu.edu.au/api/health |
+三个应用同源提供。这里只列路径而不写具体域名，让仓库与部署环境解耦。
 
-> **TLS 状态说明：** 该主机名经由学校的 Cloudflare 区域代理，其证书目前只覆盖 `it.scu.edu.au` 这一个主机名（SAN 为 `DNS:it.scu.edu.au`，不含通配符）。在 IT 为 `24832834.it.scu.edu.au` 签发证书之前，浏览器会在握手阶段直接报 `ERR_SSL_VERSION_OR_CIPHER_MISMATCH`。已部署的文件与数据库不受影响，目前仅公开的 HTTPS 访问待开通。
+| 应用 | 路径 | 由什么提供 |
+|---|---|---|
+| 公众站 | `/` | `public_html`（静态构建） |
+| 后台管理 | `/admin/` | `public_html/admin`（静态构建，`--base-href /admin/`） |
+| REST 接口 | `/api` | Node.js 应用（*Setup Node.js App*） |
+| 健康检查 | `/api/health` | Node.js 应用 |
 
-三个应用运行在同一个 cPanel 账号下：API 是一个 Node.js 应用，基础 URI 为 `/api`；两个 Angular 构建产物以静态文件形式分别上传到 `public_html` 与 `public_html/admin`。详见 [第 13 节](#13-cpanel-部署)。
+> **HTTPS 说明：** 承载本次构建的主机必须提供覆盖**所用确切主机名**的证书。若证书只签给父域、且不含通配符 SAN，浏览器会在握手阶段直接报 `ERR_SSL_VERSION_OR_CIPHER_MISMATCH` —— 而此时文件与数据库本身完全正常，TLS 修好后即可访问。在判断部署失败之前，请先确认证书。
+
+三个应用运行在同一个虚拟主机账号下：API 是一个 Node.js 应用，基础 URI 为 `/api`；两个 Angular 构建产物以静态文件形式分别上传到 `public_html` 与 `public_html/admin`。详见 [第 13 节](#13-cpanel-部署)。
 
 ---
 
@@ -930,7 +970,7 @@ The six captures above come from the final build. The rest of `docs/screenshots/
 ## 7. 接口文档
 
 开发环境基础地址：`http://localhost:3000/api`
-部署环境基础地址：`https://24832834.it.scu.edu.au/api` —— 使用该主机名前请先看 [TLS 状态说明](#2-部署地址)。
+部署环境基础地址：`https://<你的域名>/api` —— 同源部署，因此两个前端始终使用相对路径 `/api`。
 
 ### 活动
 
@@ -1210,10 +1250,10 @@ export const API_BASE = '/api';
 
 ```ts
 // adminside/src/app/core/config/api.config.ts
-export const PUBLIC_SITE_URL = 'https://24832834.it.scu.edu.au';
+export const PUBLIC_SITE_URL = 'http://localhost:4200';
 ```
 
-用于"查看公众站"快捷入口和每行指向公众页面的链接。该主机名的证书仍在等待签发，详见 [第 2 节](#2-部署地址)。
+用于"查看公众站"快捷入口和每行指向公众页面的链接。默认指向本地开发服务器，源码中不写入任何部署域名；发布构建前改成生产地址即可。
 
 ---
 
@@ -1333,28 +1373,63 @@ cd ../adminside && npm run build -- --base-href /admin/          # → dist/admi
 
 ---
 
-## 17. 界面截图
+## 17. 界面演示
 
-| 公众站首页 | 带报名名单的活动详情 |
+共 18 张截图，全部位于 `docs/screenshots/`。顺序为：先走一遍访客流程，再看后台管理，然后是接口与数据库，最后附上早期构建的完整流程用于对比。
+
+### 访客流程 —— 最终构建
+
+| 首页：主视觉与实时统计 | 活动列表：状态标签与筹款进度 |
 |---|---|
-| ![Home](docs/screenshots/a3/a3-01-home.png) | ![Detail](docs/screenshots/a3/a3-04-detail.png) |
+| ![首页主视觉](docs/screenshots/a3/a3-01-home.png) | ![首页活动列表](docs/screenshots/a3/a3-02-home-events.png) |
 
-| 带筛选条件的搜索 | 报名成功 |
+| 搜索结果：命中词高亮 | 活动详情：主办方、进度、报名名单 |
 |---|---|
-| ![Search](docs/screenshots/a3/a3-03-search.png) | ![Register](docs/screenshots/a3/a3-05-register-success.png) |
+| ![搜索](docs/screenshots/a3/a3-03-search.png) | ![详情](docs/screenshots/a3/a3-04-detail.png) |
 
-| 后台仪表盘 | 被完整性规则拦截的删除 |
+| 报名成功回执 |
+|---|
+| ![报名成功](docs/screenshots/a3/a3-05-register-success.png) |
+
+### 后台管理 —— 最终构建
+
+| 仪表盘：关键指标、状态分布、最新报名 | 活动列表：筛选、排序、CSV、停用、编辑、删除 |
 |---|---|
-| ![Dashboard](docs/screenshots/a3/a3-08-admin-dashboard.png) | ![Blocked](docs/screenshots/a3/a3-07-admin-delete-blocked.png) |
+| ![仪表盘](docs/screenshots/a3/a3-08-admin-dashboard.png) | ![活动列表](docs/screenshots/a3/a3-06-admin-list.png) |
 
-以上六张来自最终构建。`docs/screenshots/` 里还有首页活动列表（`a3-02-home-events.png`）、后台列表（`a3-06-admin-list.png`），以及搜索、详情、报名、Postman 与数据库表结构的早期截图。
+| 删除被完整性规则拦截（HTTP 409） |
+|---|
+| ![删除被拦截](docs/screenshots/a3/a3-07-admin-delete-blocked.png) |
+
+### 接口与数据库
+
+| 在 Postman 中调用搜索接口 | MySQL 中的表结构与种子数据 |
+|---|---|
+| ![Postman](docs/screenshots/07-postman-search.png) | ![数据库结构](docs/screenshots/08-database-schema.png) |
+
+### 早期构建 —— 完整访客流程
+
+| 首页主视觉 | 活动列表 |
+|---|---|
+| ![首页](docs/screenshots/01a-home-page-hero.png) | ![活动列表](docs/screenshots/01b-home-page-events.png) |
+
+| 关于我们 | 搜索筛选面板 |
+|---|---|
+| ![关于我们](docs/screenshots/01c-home-page-about.png) | ![筛选面板](docs/screenshots/02-search-filters.png) |
+
+| 搜索结果 | 空结果状态 |
+|---|---|
+| ![搜索结果](docs/screenshots/03-search-results.png) | ![空结果](docs/screenshots/04-search-empty-state.png) |
+
+| 活动详情 | 报名弹窗 |
+|---|---|
+| ![活动详情](docs/screenshots/05-event-detail.png) | ![报名弹窗](docs/screenshots/06-register-modal.png) |
 
 ---
 
 ## Author / 作者
 
-**Wang Yuning** · Student ID 24832834
-PROG2002 Web Development II
+**Wang Yuning**
 
 > Angular 22 + TypeScript · Node.js + Express · MySQL 8 · Open-Meteo
 
